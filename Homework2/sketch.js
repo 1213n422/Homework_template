@@ -18,7 +18,6 @@ let mosquitoColors = [
   "#D0BFFF"
 ];
 
-
 let mosquitoes = [];
 let dots = [];
 
@@ -29,10 +28,9 @@ let dots = [];
 
 let isTouching = false;
 
-
 // 손가락에 모기가 가려지지 않도록
 // 손가락보다 위쪽을 목표점으로 사용
-let touchOffset = 55;
+let touchOffset = 90;
 
 
 // =====================================================
@@ -46,14 +44,19 @@ function setup() {
     windowHeight
   );
 
+  // iPhone / Safari에서
+  // 캔버스가 브라우저 제스처에 가로채이지 않도록
+  let canvasElement = document.querySelector("canvas");
+
+  if (canvasElement) {
+    canvasElement.style.touchAction = "none";
+  }
 
   noStroke();
-
 
   background(
     "#111111"
   );
-
 
   // 모기 12마리
   for (
@@ -65,6 +68,7 @@ function setup() {
     mosquitoes.push(
       createMosquitoFromEdge()
     );
+
   }
 }
 
@@ -93,9 +97,7 @@ function draw() {
     let mosquito =
       mosquitoes[i];
 
-
     mosquito.update();
-
     mosquito.display();
 
 
@@ -107,7 +109,9 @@ function draw() {
         i,
         1
       );
+
     }
+
   }
 
 
@@ -122,6 +126,7 @@ function draw() {
     mosquitoes.push(
       createMosquitoFromEdge()
     );
+
   }
 
 
@@ -136,7 +141,6 @@ function draw() {
   ) {
 
     dots[i].update();
-
     dots[i].display();
 
 
@@ -148,8 +152,11 @@ function draw() {
         i,
         1
       );
+
     }
+
   }
+
 }
 
 
@@ -178,6 +185,7 @@ function createMosquitoFromEdge() {
 
     y =
       -30;
+
   }
 
 
@@ -190,6 +198,7 @@ function createMosquitoFromEdge() {
 
     y =
       random(height);
+
   }
 
 
@@ -202,6 +211,7 @@ function createMosquitoFromEdge() {
 
     y =
       height + 30;
+
   }
 
 
@@ -212,6 +222,7 @@ function createMosquitoFromEdge() {
 
     y =
       random(height);
+
   }
 
 
@@ -219,6 +230,7 @@ function createMosquitoFromEdge() {
     x,
     y
   );
+
 }
 
 
@@ -242,9 +254,9 @@ function getTouchTarget(
     isTouching
   ) {
 
+    // 손가락보다 90px 위쪽
     targetY =
       y - touchOffset;
-
 
     targetY =
       constrain(
@@ -252,6 +264,7 @@ function getTouchTarget(
         20,
         height - 20
       );
+
   }
 
 
@@ -259,6 +272,7 @@ function getTouchTarget(
     x: targetX,
     y: targetY
   };
+
 }
 
 
@@ -275,6 +289,7 @@ function mousePressed() {
   ) {
 
     return false;
+
   }
 
 
@@ -286,6 +301,7 @@ function mousePressed() {
 
 
   return false;
+
 }
 
 
@@ -305,6 +321,7 @@ function handlePress(
 
     isTouching =
       true;
+
   }
 
 
@@ -326,6 +343,7 @@ function handlePress(
     wallMosquito.kill();
 
     return;
+
   }
 
 
@@ -345,6 +363,7 @@ function handlePress(
   ) {
 
     return;
+
   }
 
 
@@ -363,6 +382,7 @@ function handlePress(
     target.x,
     target.y
   );
+
 }
 
 
@@ -377,6 +397,7 @@ function mouseDragged() {
   ) {
 
     return false;
+
   }
 
 
@@ -387,6 +408,7 @@ function mouseDragged() {
 
 
   return false;
+
 }
 
 
@@ -401,6 +423,7 @@ function touchStarted() {
   ) {
 
     return false;
+
   }
 
 
@@ -420,6 +443,7 @@ function touchStarted() {
 
 
   return false;
+
 }
 
 
@@ -435,6 +459,7 @@ function touchMoved() {
   ) {
 
     return false;
+
   }
 
 
@@ -449,6 +474,7 @@ function touchMoved() {
 
 
   return false;
+
 }
 
 
@@ -487,8 +513,11 @@ function updateAttractTarget(
         target.x,
         target.y
       );
+
     }
+
   }
+
 }
 
 
@@ -503,6 +532,7 @@ function mouseReleased() {
   ) {
 
     return false;
+
   }
 
 
@@ -510,6 +540,7 @@ function mouseReleased() {
 
 
   return false;
+
 }
 
 
@@ -521,12 +552,12 @@ function touchEnded() {
 
   stopAllAttracting();
 
-
   isTouching =
     false;
 
 
   return false;
+
 }
 
 
@@ -548,8 +579,11 @@ function stopAllAttracting() {
     ) {
 
       mosquitoes[i].stopAttracting();
+
     }
+
   }
+
 }
 
 
@@ -585,6 +619,7 @@ function findNearestFlyingMosquito(
     ) {
 
       continue;
+
     }
 
 
@@ -606,11 +641,14 @@ function findNearestFlyingMosquito(
 
       nearest =
         mosquito;
+
     }
+
   }
 
 
   return nearest;
+
 }
 
 
@@ -646,6 +684,7 @@ function findWallMosquito(
     ) {
 
       continue;
+
     }
 
 
@@ -668,11 +707,14 @@ function findWallMosquito(
 
       nearest =
         mosquito;
+
     }
+
   }
 
 
   return nearest;
+
 }
 
 
@@ -693,6 +735,7 @@ function createDot(
       c
     )
   );
+
 }
 
 
@@ -727,6 +770,7 @@ class ColorDot {
 
     this.dead =
       false;
+
   }
 
 
@@ -736,6 +780,7 @@ class ColorDot {
     //
     // 피가 화면에 계속 남아있도록
     // 수명 / 투명도 감소를 제거
+
   }
 
 
@@ -760,7 +805,9 @@ class ColorDot {
 
 
     pop();
+
   }
+
 }
 
 
@@ -774,4 +821,5 @@ function windowResized() {
     windowWidth,
     windowHeight
   );
+
 }

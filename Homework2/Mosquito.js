@@ -26,20 +26,6 @@ class Mosquito {
 
 
     // -----------------------------
-    // 빙글빙글 감지
-    // -----------------------------
-
-    this.checkX = this.x;
-    this.checkY = this.y;
-
-    this.travelDistance = 0;
-
-    this.spinCheckTimer = 0;
-
-    this.spinCheckInterval = 75;
-
-
-    // -----------------------------
     // 비행 움직임
     // -----------------------------
 
@@ -226,68 +212,11 @@ class Mosquito {
       this.angle + sideWobble;
 
 
-    let previousX = this.x;
-    let previousY = this.y;
-
-
     this.x +=
       cos(moveAngle) * this.speed;
 
-
     this.y +=
       sin(moveAngle) * this.speed;
-
-
-    this.travelDistance +=
-      dist(
-        previousX,
-        previousY,
-        this.x,
-        this.y
-      );
-
-
-    // ---------------------------------
-    // 빙글빙글 감지
-    // ---------------------------------
-
-    this.spinCheckTimer++;
-
-
-    if (
-      this.spinCheckTimer >=
-      this.spinCheckInterval
-    ) {
-
-      let netDistance =
-        dist(
-          this.checkX,
-          this.checkY,
-          this.x,
-          this.y
-        );
-
-
-      let looping =
-        (
-          this.travelDistance > 180 &&
-          netDistance < 75
-        );
-
-
-      if (looping) {
-
-        this.resetFlyingDirection();
-      }
-
-
-      this.checkX = this.x;
-      this.checkY = this.y;
-
-      this.travelDistance = 0;
-
-      this.spinCheckTimer = 0;
-    }
 
 
     // ---------------------------------
@@ -373,50 +302,6 @@ class Mosquito {
 
     this.changeTimer =
       random(110, 190);
-  }
-
-
-  // =================================================
-  // 빙글빙글 탈출
-  // =================================================
-
-  resetFlyingDirection() {
-
-    this.angle =
-      random(TWO_PI);
-
-
-    this.targetAngle =
-      this.angle;
-
-
-    this.speed =
-      random(4.5, 5.5);
-
-
-    this.targetSpeed =
-      random(4.5, 5.5);
-
-
-    this.changeTimer =
-      random(120, 190);
-
-
-    this.checkX =
-      this.x;
-
-    this.checkY =
-      this.y;
-
-    this.travelDistance =
-      0;
-
-    this.spinCheckTimer =
-      0;
-
-
-    this.flightTime =
-      random(0, 1000);
   }
 
 
@@ -576,19 +461,6 @@ class Mosquito {
       random(100, 180);
 
 
-    this.checkX =
-      this.x;
-
-    this.checkY =
-      this.y;
-
-    this.travelDistance =
-      0;
-
-    this.spinCheckTimer =
-      0;
-
-
     this.flightTime =
       random(0, 1000);
 
@@ -606,6 +478,7 @@ class Mosquito {
     if (
       this.state !== "fly"
     ) {
+
       return;
     }
 
@@ -920,19 +793,6 @@ class Mosquito {
         random(100, 180);
 
 
-      this.checkX =
-        this.x;
-
-      this.checkY =
-        this.y;
-
-      this.travelDistance =
-        0;
-
-      this.spinCheckTimer =
-        0;
-
-
       this.flightTime =
         random(0, 1000);
 
@@ -1207,6 +1067,7 @@ class Mosquito {
     if (
       this.state !== "wall"
     ) {
+
       return;
     }
 
