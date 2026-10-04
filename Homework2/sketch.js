@@ -1,8 +1,3 @@
-// =====================================================
-// MOSQUITO CATCHING
-// sketch.js
-// =====================================================
-
 let mosquitoColors = [
   "#FFB3BA",
   "#FFCC80",
@@ -21,36 +16,25 @@ let mosquitoColors = [
 let mosquitoes = [];
 let dots = [];
 
-
-// =====================================================
-// 모바일 터치
-// =====================================================
-
 let isTouching = false;
 
-// 손가락에 모기가 가려지지 않도록
-// 손가락보다 위쪽을 목표점으로 사용
-let touchOffset = 90;
+
+// 손가락보다 위에 모기가 오도록
+const touchOffset = 140;
 
 
-// =====================================================
-// SETUP
-// =====================================================
+// 모바일에서 터치 후
+// 가짜 mouse 이벤트가 들어오는 것 방지
+let lastTouchTime = 0;
+
 
 function setup() {
 
-  createCanvas(
-    windowWidth,
-    windowHeight
-  );
-
-  // iPhone / Safari에서
-  // 캔버스가 브라우저 제스처에 가로채이지 않도록
-  let canvasElement = document.querySelector("canvas");
-
-  if (canvasElement) {
-    canvasElement.style.touchAction = "none";
-  }
+  const canvas =
+    createCanvas(
+      windowWidth,
+      windowHeight
+    );
 
   noStroke();
 
@@ -58,7 +42,63 @@ function setup() {
     "#111111"
   );
 
-  // 모기 12마리
+
+  // 모바일 터치 설정
+
+  const canvasElement =
+    canvas.elt;
+
+  canvasElement.style.touchAction =
+    "none";
+
+  canvasElement.style.userSelect =
+    "none";
+
+  canvasElement.style.webkitUserSelect =
+    "none";
+
+  canvasElement.style.webkitTouchCallout =
+    "none";
+
+
+  // p5 touch 대신
+  // native touch 이벤트 사용
+
+  canvasElement.addEventListener(
+    "touchstart",
+    nativeTouchStart,
+    {
+      passive: false
+    }
+  );
+
+  canvasElement.addEventListener(
+    "touchmove",
+    nativeTouchMove,
+    {
+      passive: false
+    }
+  );
+
+  canvasElement.addEventListener(
+    "touchend",
+    nativeTouchEnd,
+    {
+      passive: false
+    }
+  );
+
+  canvasElement.addEventListener(
+    "touchcancel",
+    nativeTouchEnd,
+    {
+      passive: false
+    }
+  );
+
+
+  // 처음 12마리
+
   for (
     let i = 0;
     i < 12;
@@ -68,14 +108,9 @@ function setup() {
     mosquitoes.push(
       createMosquitoFromEdge()
     );
-
   }
 }
 
-
-// =====================================================
-// DRAW
-// =====================================================
 
 function draw() {
 
@@ -84,9 +119,9 @@ function draw() {
   );
 
 
-  // ---------------------------------
+  // -----------------------------
   // 모기
-  // ---------------------------------
+  // -----------------------------
 
   for (
     let i = mosquitoes.length - 1;
@@ -94,10 +129,11 @@ function draw() {
     i--
   ) {
 
-    let mosquito =
+    const mosquito =
       mosquitoes[i];
 
     mosquito.update();
+
     mosquito.display();
 
 
@@ -109,15 +145,11 @@ function draw() {
         i,
         1
       );
-
     }
-
   }
 
 
-  // ---------------------------------
   // 항상 12마리 유지
-  // ---------------------------------
 
   while (
     mosquitoes.length < 12
@@ -126,13 +158,12 @@ function draw() {
     mosquitoes.push(
       createMosquitoFromEdge()
     );
-
   }
 
 
-  // ---------------------------------
-  // 피 / 색 점
-  // ---------------------------------
+  // -----------------------------
+  // 색 점
+  // -----------------------------
 
   for (
     let i = dots.length - 1;
@@ -140,89 +171,67 @@ function draw() {
     i--
   ) {
 
-    dots[i].update();
-    dots[i].display();
+    const dot =
+      dots[i];
+
+    dot.update();
+
+    dot.display();
 
 
     if (
-      dots[i].dead
+      dot.dead
     ) {
 
       dots.splice(
         i,
         1
       );
-
     }
-
   }
-
 }
 
 
-// =====================================================
-// 화면 가장자리에서 모기 생성
-// =====================================================
+// =================================================
+// 화면 밖에서 들어오는 모기
+// =================================================
 
 function createMosquitoFromEdge() {
 
   let x;
   let y;
 
-
-  let side =
+  const edge =
     floor(
       random(4)
     );
 
 
-  if (
-    side === 0
-  ) {
+  if (edge === 0) {
 
-    x =
-      random(width);
-
-    y =
-      -30;
+    x = -40;
+    y = random(height);
 
   }
 
+  else if (edge === 1) {
 
-  else if (
-    side === 1
-  ) {
-
-    x =
-      width + 30;
-
-    y =
-      random(height);
+    x = width + 40;
+    y = random(height);
 
   }
 
+  else if (edge === 2) {
 
-  else if (
-    side === 2
-  ) {
-
-    x =
-      random(width);
-
-    y =
-      height + 30;
+    x = random(width);
+    y = -40;
 
   }
-
 
   else {
 
-    x =
-      -30;
-
-    y =
-      random(height);
-
+    x = random(width);
+    y = height + 40;
   }
 
 
@@ -230,18 +239,14 @@ function createMosquitoFromEdge() {
     x,
     y
   );
-
 }
 
 
-// =====================================================
-// 터치 목표점
-// =====================================================
+// =================================================
+// 손가락 위치 → 모기가 갈 위치
+// =================================================
 
-function getTouchTarget(
-  x,
-  y
-) {
+function getTouchTarget(x, y) {
 
   let targetX =
     x;
@@ -254,17 +259,16 @@ function getTouchTarget(
     isTouching
   ) {
 
-    // 손가락보다 90px 위쪽
     targetY =
       y - touchOffset;
+
 
     targetY =
       constrain(
         targetY,
-        20,
-        height - 20
+        50,
+        height - 50
       );
-
   }
 
 
@@ -272,24 +276,32 @@ function getTouchTarget(
     x: targetX,
     y: targetY
   };
-
 }
 
 
-// =====================================================
-// 마우스 클릭
-// =====================================================
+// =================================================
+// MOUSE
+// =================================================
 
 function mousePressed() {
 
-  // 모바일에서 발생하는
-  // 중복 mouse 이벤트 방지
+  // 모바일 터치 직후 생기는
+  // 가짜 mouse 이벤트 차단
+
+  if (
+    millis() - lastTouchTime <
+    500
+  ) {
+
+    return false;
+  }
+
+
   if (
     isTouching
   ) {
 
     return false;
-
   }
 
 
@@ -301,13 +313,195 @@ function mousePressed() {
 
 
   return false;
-
 }
 
 
-// =====================================================
-// 눌림 처리
-// =====================================================
+function mouseDragged() {
+
+  if (
+    isTouching
+  ) {
+
+    return false;
+  }
+
+
+  updateAttractTarget(
+    mouseX,
+    mouseY
+  );
+
+
+  return false;
+}
+
+
+function mouseReleased() {
+
+  if (
+    isTouching
+  ) {
+
+    return false;
+  }
+
+
+  stopAllAttracting();
+
+  return false;
+}
+
+
+// =================================================
+// 모바일 TOUCH
+// =================================================
+
+function getNativeTouchPosition(
+  touch
+) {
+
+  const rect =
+    canvas.elt.getBoundingClientRect();
+
+
+  return {
+
+    x:
+      (touch.clientX - rect.left)
+      *
+      (
+        width /
+        rect.width
+      ),
+
+    y:
+      (touch.clientY - rect.top)
+      *
+      (
+        height /
+        rect.height
+      )
+  };
+}
+
+
+// =================================================
+// TOUCH START
+// =================================================
+
+function nativeTouchStart(
+  event
+) {
+
+  event.preventDefault();
+
+
+  if (
+    !event.touches ||
+    event.touches.length === 0
+  ) {
+
+    return;
+  }
+
+
+  const touch =
+    event.touches[0];
+
+
+  const pos =
+    getNativeTouchPosition(
+      touch
+    );
+
+
+  lastTouchTime =
+    millis();
+
+
+  isTouching =
+    true;
+
+
+  handlePress(
+    pos.x,
+    pos.y,
+    true
+  );
+}
+
+
+// =================================================
+// TOUCH MOVE
+// =================================================
+
+function nativeTouchMove(
+  event
+) {
+
+  event.preventDefault();
+
+
+  if (
+    !isTouching
+  ) {
+
+    return;
+  }
+
+
+  if (
+    !event.touches ||
+    event.touches.length === 0
+  ) {
+
+    return;
+  }
+
+
+  const touch =
+    event.touches[0];
+
+
+  const pos =
+    getNativeTouchPosition(
+      touch
+    );
+
+
+  updateAttractTarget(
+    pos.x,
+    pos.y
+  );
+}
+
+
+// =================================================
+// TOUCH END
+// =================================================
+
+function nativeTouchEnd(
+  event
+) {
+
+  event.preventDefault();
+
+
+  stopAllAttracting();
+
+
+  isTouching =
+    false;
+
+
+  lastTouchTime =
+    millis();
+}
+
+
+// =================================================
+// 클릭 / 터치 처리
+// =================================================
 
 function handlePress(
   x,
@@ -321,15 +515,12 @@ function handlePress(
 
     isTouching =
       true;
-
   }
 
 
-  // ---------------------------------
-  // 벽에 붙어 있는 모기
-  // ---------------------------------
+  // 먼저 벽 모기 확인
 
-  let wallMosquito =
+  const wallMosquito =
     findWallMosquito(
       x,
       y
@@ -343,15 +534,12 @@ function handlePress(
     wallMosquito.kill();
 
     return;
-
   }
 
 
-  // ---------------------------------
   // 가장 가까운 비행 모기
-  // ---------------------------------
 
-  let mosquito =
+  const mosquito =
     findNearestFlyingMosquito(
       x,
       y
@@ -363,15 +551,10 @@ function handlePress(
   ) {
 
     return;
-
   }
 
 
-  // ---------------------------------
-  // 실제 목표점
-  // ---------------------------------
-
-  let target =
+  const target =
     getTouchTarget(
       x,
       y
@@ -382,112 +565,19 @@ function handlePress(
     target.x,
     target.y
   );
-
 }
 
 
-// =====================================================
-// 마우스 드래그
-// =====================================================
-
-function mouseDragged() {
-
-  if (
-    isTouching
-  ) {
-
-    return false;
-
-  }
-
-
-  updateAttractTarget(
-    mouseX,
-    mouseY
-  );
-
-
-  return false;
-
-}
-
-
-// =====================================================
-// 터치 시작
-// =====================================================
-
-function touchStarted() {
-
-  if (
-    touches.length === 0
-  ) {
-
-    return false;
-
-  }
-
-
-  isTouching =
-    true;
-
-
-  let touch =
-    touches[0];
-
-
-  handlePress(
-    touch.x,
-    touch.y,
-    true
-  );
-
-
-  return false;
-
-}
-
-
-// =====================================================
-// 터치 이동
-// =====================================================
-
-function touchMoved() {
-
-  if (
-    !isTouching ||
-    touches.length === 0
-  ) {
-
-    return false;
-
-  }
-
-
-  let touch =
-    touches[0];
-
-
-  updateAttractTarget(
-    touch.x,
-    touch.y
-  );
-
-
-  return false;
-
-}
-
-
-// =====================================================
-// 목표점 업데이트
-// =====================================================
+// =================================================
+// 손가락 이동
+// =================================================
 
 function updateAttractTarget(
   x,
   y
 ) {
 
-  let target =
+  const target =
     getTouchTarget(
       x,
       y
@@ -500,7 +590,7 @@ function updateAttractTarget(
     i++
   ) {
 
-    let mosquito =
+    const mosquito =
       mosquitoes[i];
 
 
@@ -513,57 +603,14 @@ function updateAttractTarget(
         target.x,
         target.y
       );
-
     }
-
   }
-
 }
 
 
-// =====================================================
-// 마우스 놓기
-// =====================================================
-
-function mouseReleased() {
-
-  if (
-    isTouching
-  ) {
-
-    return false;
-
-  }
-
-
-  stopAllAttracting();
-
-
-  return false;
-
-}
-
-
-// =====================================================
-// 터치 놓기
-// =====================================================
-
-function touchEnded() {
-
-  stopAllAttracting();
-
-  isTouching =
-    false;
-
-
-  return false;
-
-}
-
-
-// =====================================================
-// 유인 중인 모기 해제
-// =====================================================
+// =================================================
+// 손가락 놓기
+// =================================================
 
 function stopAllAttracting() {
 
@@ -573,23 +620,24 @@ function stopAllAttracting() {
     i++
   ) {
 
+    const mosquito =
+      mosquitoes[i];
+
+
     if (
-      mosquitoes[i].state === "attract" ||
-      mosquitoes[i].state === "suck"
+      mosquito.state === "attract" ||
+      mosquito.state === "suck"
     ) {
 
-      mosquitoes[i].stopAttracting();
-
+      mosquito.stopAttracting();
     }
-
   }
-
 }
 
 
-// =====================================================
+// =================================================
 // 가장 가까운 비행 모기
-// =====================================================
+// =================================================
 
 function findNearestFlyingMosquito(
   x,
@@ -599,8 +647,7 @@ function findNearestFlyingMosquito(
   let nearest =
     null;
 
-
-  let nearestDistance =
+  let nearestDistanceSq =
     Infinity;
 
 
@@ -610,7 +657,7 @@ function findNearestFlyingMosquito(
     i++
   ) {
 
-    let mosquito =
+    const mosquito =
       mosquitoes[i];
 
 
@@ -619,42 +666,44 @@ function findNearestFlyingMosquito(
     ) {
 
       continue;
-
     }
 
 
-    let d =
-      dist(
-        x,
-        y,
-        mosquito.x,
-        mosquito.y
-      );
+    const dx =
+      mosquito.x - x;
+
+    const dy =
+      mosquito.y - y;
+
+
+    // sqrt 없이 거리 비교
+
+    const distanceSq =
+      dx * dx +
+      dy * dy;
 
 
     if (
-      d < nearestDistance
+      distanceSq <
+      nearestDistanceSq
     ) {
 
-      nearestDistance =
-        d;
+      nearestDistanceSq =
+        distanceSq;
 
       nearest =
         mosquito;
-
     }
-
   }
 
 
   return nearest;
-
 }
 
 
-// =====================================================
+// =================================================
 // 벽 모기 찾기
-// =====================================================
+// =================================================
 
 function findWallMosquito(
   x,
@@ -664,9 +713,8 @@ function findWallMosquito(
   let nearest =
     null;
 
-
-  let nearestDistance =
-    Infinity;
+  let nearestDistanceSq =
+    28 * 28;
 
 
   for (
@@ -675,7 +723,7 @@ function findWallMosquito(
     i++
   ) {
 
-    let mosquito =
+    const mosquito =
       mosquitoes[i];
 
 
@@ -684,43 +732,42 @@ function findWallMosquito(
     ) {
 
       continue;
-
     }
 
 
-    let d =
-      dist(
-        x,
-        y,
-        mosquito.x,
-        mosquito.y
-      );
+    const dx =
+      mosquito.x - x;
+
+    const dy =
+      mosquito.y - y;
+
+
+    const distanceSq =
+      dx * dx +
+      dy * dy;
 
 
     if (
-      d < 28 &&
-      d < nearestDistance
+      distanceSq <
+      nearestDistanceSq
     ) {
 
-      nearestDistance =
-        d;
+      nearestDistanceSq =
+        distanceSq;
 
       nearest =
         mosquito;
-
     }
-
   }
 
 
   return nearest;
-
 }
 
 
-// =====================================================
-// ★ 피 / 색 점 생성
-// =====================================================
+// =================================================
+// 색 점
+// =================================================
 
 function createDot(
   x,
@@ -735,13 +782,8 @@ function createDot(
       c
     )
   );
-
 }
 
-
-// =====================================================
-// ★ 피 / 색 점
-// =====================================================
 
 class ColorDot {
 
@@ -760,60 +802,42 @@ class ColorDot {
     this.c =
       c;
 
-
     this.size =
       random(
         16,
         24
       );
 
-
     this.dead =
       false;
-
   }
 
 
   update() {
-
-    // ★ 아무것도 하지 않음
-    //
-    // 피가 화면에 계속 남아있도록
-    // 수명 / 투명도 감소를 제거
-
+    // 영구적으로 남음
   }
 
 
   display() {
 
-    push();
-
-
     noStroke();
-
 
     fill(
       this.c
     );
-
 
     circle(
       this.x,
       this.y,
       this.size
     );
-
-
-    pop();
-
   }
-
 }
 
 
-// =====================================================
+// =================================================
 // 화면 크기 변경
-// =====================================================
+// =================================================
 
 function windowResized() {
 
@@ -821,5 +845,4 @@ function windowResized() {
     windowWidth,
     windowHeight
   );
-
 }

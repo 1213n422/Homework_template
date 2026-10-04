@@ -1,92 +1,55 @@
 class Mosquito {
 
   constructor(x, y) {
-
     this.x = x;
     this.y = y;
 
     this.size = random(18, 24);
 
     this.c = random(mosquitoColors);
+    this.baseColor = color(this.c);
 
+    this.wingColor = color(this.c);
+    this.wingColor.setAlpha(120);
 
-    // -----------------------------
+    this.topWingColor = color(this.c);
+    this.topWingColor.setAlpha(135);
+
     // 비행
-    // -----------------------------
-
     this.angle = random(TWO_PI);
-
     this.speed = random(3.5, 5);
-
     this.targetSpeed = this.speed;
-
     this.targetAngle = this.angle;
-
     this.changeTimer = random(100, 180);
 
-
-    // -----------------------------
     // 비행 움직임
-    // -----------------------------
-
     this.flightTime = random(0, 1000);
-
     this.wobbleAmount = random(0.8, 1.5);
 
-
-    // -----------------------------
     // 상태
-    // -----------------------------
-
     this.state = "fly";
-
     this.death = false;
 
-
-    // -----------------------------
     // 벽
-    // -----------------------------
-
     this.targetX = 0;
     this.targetY = 0;
-
     this.wallTimer = 0;
-
     this.wallDuration = random(120, 240);
 
-
-    // -----------------------------
     // 손가락
-    // -----------------------------
-
     this.attractX = 0;
     this.attractY = 0;
 
-
-    // -----------------------------
     // 흡혈
-    // -----------------------------
-
     this.suckTimer = 0;
-
     this.suckDuration = 120;
-
     this.belly = 1;
 
-
-    // -----------------------------
     // 화면 기울기
-    // -----------------------------
-
     this.visualAngle = 0;
 
-
-    // -----------------------------
     // 제거 효과
-    // -----------------------------
-
     this.burstSize = 0;
-
     this.burstAlpha = 255;
   }
 
@@ -97,43 +60,29 @@ class Mosquito {
 
   update() {
 
-    if (this.death) {
-      return;
-    }
-
+    if (this.death) return;
 
     if (this.state === "fly") {
-
       this.updateFlying();
-
     }
 
     else if (this.state === "landing") {
-
       this.updateLanding();
-
     }
 
     else if (this.state === "wall") {
-
       this.updateWall();
-
     }
 
     else if (this.state === "attract") {
-
       this.updateAttract();
-
     }
 
     else if (this.state === "suck") {
-
       this.updateSuck();
-
     }
 
     else if (this.state === "burst") {
-
       this.updateBurst();
     }
   }
@@ -146,71 +95,53 @@ class Mosquito {
   updateFlying() {
 
     this.flightTime += 0.18;
-
     this.changeTimer--;
 
-
     if (this.changeTimer <= 0) {
-
       this.chooseNewDirection();
     }
 
+    let angleDifference = atan2(
+      sin(this.targetAngle - this.angle),
+      cos(this.targetAngle - this.angle)
+    );
 
-    let angleDifference =
-      atan2(
-        sin(this.targetAngle - this.angle),
-        cos(this.targetAngle - this.angle)
-      );
-
-
-    let turnSpeed = 0.035;
-
+    const turnSpeed = 0.035;
 
     if (abs(angleDifference) > turnSpeed) {
 
       if (angleDifference > 0) {
-
         this.angle += turnSpeed;
-
       }
 
       else {
-
         this.angle -= turnSpeed;
       }
 
     }
 
     else {
-
       this.angle = this.targetAngle;
     }
 
+    this.angle = atan2(
+      sin(this.angle),
+      cos(this.angle)
+    );
 
-    this.angle =
-      atan2(
-        sin(this.angle),
-        cos(this.angle)
-      );
+    this.speed = lerp(
+      this.speed,
+      this.targetSpeed,
+      0.025
+    );
 
-
-    this.speed =
-      lerp(
-        this.speed,
-        this.targetSpeed,
-        0.025
-      );
-
-
-    let sideWobble =
+    const sideWobble =
       sin(this.flightTime * 2.3)
       * 0.035
       * this.wobbleAmount;
 
-
-    let moveAngle =
+    const moveAngle =
       this.angle + sideWobble;
-
 
     this.x +=
       cos(moveAngle) * this.speed;
@@ -219,37 +150,7 @@ class Mosquito {
       sin(moveAngle) * this.speed;
 
 
-    // ---------------------------------
-    // 기울기
-    // ---------------------------------
-
-    let wantedAngle =
-      sin(this.angle) * 0.35;
-
-
-    wantedAngle +=
-      sin(this.flightTime * 2.0) * 0.015;
-
-
-    wantedAngle =
-      constrain(
-        wantedAngle,
-        -0.35,
-        0.35
-      );
-
-
-    this.visualAngle =
-      lerp(
-        this.visualAngle,
-        wantedAngle,
-        0.12
-      );
-
-
-    // ---------------------------------
-    // 화면 밖으로 나감
-    // ---------------------------------
+    // 화면 밖으로 나가면 제거
 
     if (
       this.x < -60 ||
@@ -264,12 +165,30 @@ class Mosquito {
     }
 
 
-    // ---------------------------------
+    // 기울기
+
+    let wantedAngle =
+      sin(this.angle) * 0.35;
+
+    wantedAngle +=
+      sin(this.flightTime * 2.0) * 0.015;
+
+    wantedAngle = constrain(
+      wantedAngle,
+      -0.35,
+      0.35
+    );
+
+    this.visualAngle = lerp(
+      this.visualAngle,
+      wantedAngle,
+      0.12
+    );
+
+
     // 가끔 착륙
-    // ---------------------------------
 
     if (random() < 0.0015) {
-
       this.prepareLanding();
     }
   }
@@ -281,13 +200,11 @@ class Mosquito {
 
   chooseNewDirection() {
 
-    let turn =
+    const turn =
       random(-1.15, 1.15);
-
 
     this.targetAngle =
       this.angle + turn;
-
 
     this.targetAngle =
       atan2(
@@ -295,10 +212,8 @@ class Mosquito {
         cos(this.targetAngle)
       );
 
-
     this.targetSpeed =
       random(3.5, 5.5);
-
 
     this.changeTimer =
       random(110, 190);
@@ -313,13 +228,11 @@ class Mosquito {
 
     this.state = "landing";
 
-
     this.targetX =
       random(
         60,
         width - 60
       );
-
 
     this.targetY =
       random(
@@ -335,19 +248,17 @@ class Mosquito {
 
   updateLanding() {
 
-    let dx =
+    const dx =
       this.targetX - this.x;
 
-    let dy =
+    const dy =
       this.targetY - this.y;
 
-
-    let d =
+    const d =
       sqrt(
         dx * dx +
         dy * dy
       );
-
 
     if (d < 4) {
 
@@ -365,44 +276,33 @@ class Mosquito {
       return;
     }
 
-
-    let targetAngle =
+    const targetAngle =
       atan2(
         dy,
         dx
       );
 
-
-    let difference =
+    const difference =
       atan2(
         sin(targetAngle - this.angle),
         cos(targetAngle - this.angle)
       );
 
-
     this.angle +=
       difference * 0.05;
-
 
     this.x +=
       cos(this.angle) * 2.5;
 
-
     this.y +=
       sin(this.angle) * 2.5;
 
-
     let wantedAngle =
-      sin(this.angle) * 0.35;
-
-
-    wantedAngle =
       constrain(
-        wantedAngle,
+        sin(this.angle) * 0.35,
         -0.35,
         0.35
       );
-
 
     this.visualAngle =
       lerp(
@@ -420,7 +320,6 @@ class Mosquito {
   updateWall() {
 
     this.wallTimer++;
-
 
     if (
       this.wallTimer >
@@ -440,30 +339,23 @@ class Mosquito {
 
     this.state = "fly";
 
-
     this.angle +=
       random(-0.4, 0.4);
-
 
     this.targetAngle =
       this.angle;
 
-
     this.speed =
       random(3.5, 5);
-
 
     this.targetSpeed =
       random(3.5, 5.5);
 
-
     this.changeTimer =
       random(100, 180);
 
-
     this.flightTime =
       random(0, 1000);
-
 
     this.belly = 1;
   }
@@ -478,14 +370,11 @@ class Mosquito {
     if (
       this.state !== "fly"
     ) {
-
       return;
     }
 
-
     this.state =
       "attract";
-
 
     this.attractX =
       x;
@@ -516,104 +405,84 @@ class Mosquito {
 
 
   // =================================================
-  // ★ 주둥이 끝 좌표
+  // 주둥이 끝 좌표
   // =================================================
 
   getNosePosition() {
 
-    let noseLength =
+    const noseLength =
       this.size * 1.45;
 
-
-    // 오른쪽을 보면 +X
-    // 왼쪽을 보면 -X
-    let facing =
+    const facing =
       cos(this.angle) >= 0
         ? 1
         : -1;
 
-
-    let localX =
+    const localX =
       noseLength * facing;
 
-
-    let offsetX =
-      cos(this.visualAngle) *
-      localX;
-
-
-    let offsetY =
-      sin(this.visualAngle) *
-      localX;
-
-
     return {
-      x: this.x + offsetX,
-      y: this.y + offsetY
+      x:
+        this.x +
+        cos(this.visualAngle) *
+        localX,
+
+      y:
+        this.y +
+        sin(this.visualAngle) *
+        localX
     };
   }
 
 
   // =================================================
-  // ★ 손가락으로 날아가기
+  // 손가락으로 날아가기
   // =================================================
 
   updateAttract() {
 
-    let dx =
+    const dx =
       this.attractX - this.x;
 
-    let dy =
+    const dy =
       this.attractY - this.y;
 
-
-    let targetAngle =
+    const targetAngle =
       atan2(
         dy,
         dx
       );
 
-
-    let difference =
+    const difference =
       atan2(
         sin(targetAngle - this.angle),
         cos(targetAngle - this.angle)
       );
 
-
-    // 방향 전환
     this.angle +=
       difference * 0.08;
 
-
     this.flightTime += 0.15;
 
-
-    let wobble =
+    const wobble =
       sin(
         this.flightTime * 2
       ) * 0.02;
 
+    const moveAngle =
+      this.angle + wobble;
 
     this.x +=
-      cos(
-        this.angle + wobble
-      ) * 4;
-
+      cos(moveAngle) * 4;
 
     this.y +=
-      sin(
-        this.angle + wobble
-      ) * 4;
+      sin(moveAngle) * 4;
 
 
-    // ---------------------------------
-    // 화면상 기울기
-    // ---------------------------------
+    // 화면 기울기
 
     let wantedAngle =
       sin(this.angle) * 0.35;
-
 
     wantedAngle =
       constrain(
@@ -621,7 +490,6 @@ class Mosquito {
         -0.35,
         0.35
       );
-
 
     this.visualAngle =
       lerp(
@@ -631,107 +499,65 @@ class Mosquito {
       );
 
 
-    // ---------------------------------
-    // ★ 실제 주둥이 끝 위치
-    // ---------------------------------
+    // 주둥이 위치
 
-    let nose =
+    const nose =
       this.getNosePosition();
 
+    const nx =
+      this.attractX - nose.x;
 
-    let noseDistance =
-      dist(
-        nose.x,
-        nose.y,
-        this.attractX,
-        this.attractY
+    const ny =
+      this.attractY - nose.y;
+
+    const noseDistance =
+      sqrt(
+        nx * nx +
+        ny * ny
       );
 
 
-    // ---------------------------------
-    // ★ 주둥이가 손가락에 닿으면
-    // 정확히 꽂아버림
-    // ---------------------------------
+    // 주둥이가 손가락에 닿으면 흡혈
 
     if (
       noseDistance < 12
     ) {
 
-      this.x +=
-        this.attractX -
-        nose.x;
-
-
-      this.y +=
-        this.attractY -
-        nose.y;
-
+      this.x += nx;
+      this.y += ny;
 
       this.state =
         "suck";
 
+      this.suckTimer = 0;
 
-      this.suckTimer =
-        0;
-
-
-      this.belly =
-        1;
+      this.belly = 1;
     }
   }
 
 
   // =================================================
-  // ★ 흡혈
+  // 흡혈
   // =================================================
 
   updateSuck() {
 
-    // ---------------------------------
-    // 현재 주둥이 위치
-    // ---------------------------------
-
-    let nose =
+    const nose =
       this.getNosePosition();
 
-
-    // ---------------------------------
-    // 손가락과 주둥이의 차이
-    // ---------------------------------
-
-    let fixX =
+    this.x +=
       this.attractX -
       nose.x;
 
-
-    let fixY =
+    this.y +=
       this.attractY -
       nose.y;
 
-
-    // ---------------------------------
-    // ★ 주둥이 끝을 손가락에 고정
-    // ---------------------------------
-
-    this.x +=
-      fixX;
-
-
-    this.y +=
-      fixY;
-
-
     this.suckTimer++;
-
-
-    // ---------------------------------
-    // ★ 배만 커짐
-    // ---------------------------------
 
     let progress =
       this.suckTimer /
       this.suckDuration;
-
 
     progress =
       constrain(
@@ -740,14 +566,9 @@ class Mosquito {
         1
       );
 
-
     this.belly =
       1 + progress;
 
-
-    // ---------------------------------
-    // 완료
-    // ---------------------------------
 
     if (
       this.suckTimer >=
@@ -772,30 +593,23 @@ class Mosquito {
 
       this.state = "fly";
 
-
       this.angle +=
         random(-0.4, 0.4);
-
 
       this.targetAngle =
         this.angle;
 
-
       this.speed =
         random(3.5, 5);
-
 
       this.targetSpeed =
         random(3.5, 5.5);
 
-
       this.changeTimer =
         random(100, 180);
 
-
       this.flightTime =
         random(0, 1000);
-
 
       this.belly = 1;
     }
@@ -837,12 +651,10 @@ class Mosquito {
 
     push();
 
-
     translate(
       this.x,
       this.y
     );
-
 
     rotate(
       this.visualAngle
@@ -850,6 +662,7 @@ class Mosquito {
 
 
     // 왼쪽으로 날아가면 좌우 반전
+
     if (
       cos(this.angle) < 0
     ) {
@@ -857,27 +670,17 @@ class Mosquito {
       scale(-1, 1);
     }
 
-
-    let s =
+    const s =
       this.size;
-
 
     noStroke();
 
 
-    // ---------------------------------
     // 날개 하나
-    // ---------------------------------
 
-    let wingColor =
-      color(this.c);
-
-
-    wingColor.setAlpha(120);
-
-
-    fill(wingColor);
-
+    fill(
+      this.wingColor
+    );
 
     ellipse(
       -s * 0.15,
@@ -887,12 +690,11 @@ class Mosquito {
     );
 
 
-    // ---------------------------------
     // 몸
-    // ---------------------------------
 
-    fill(this.c);
-
+    fill(
+      this.baseColor
+    );
 
     ellipse(
       0,
@@ -902,9 +704,7 @@ class Mosquito {
     );
 
 
-    // ---------------------------------
-    // 배
-    // ---------------------------------
+    // 배만 커짐
 
     ellipse(
       -s * 0.38,
@@ -914,9 +714,7 @@ class Mosquito {
     );
 
 
-    // ---------------------------------
     // 머리
-    // ---------------------------------
 
     circle(
       s * 0.48,
@@ -925,14 +723,13 @@ class Mosquito {
     );
 
 
-    // ---------------------------------
     // 주둥이
-    // ---------------------------------
 
-    stroke(this.c);
+    stroke(
+      this.baseColor
+    );
 
     strokeWeight(1);
-
 
     line(
       s * 0.65,
@@ -942,9 +739,7 @@ class Mosquito {
     );
 
 
-    // ---------------------------------
     // 다리
-    // ---------------------------------
 
     line(
       s * 0.15,
@@ -953,7 +748,6 @@ class Mosquito {
       s * 0.45
     );
 
-
     line(
       -s * 0.05,
       0,
@@ -961,14 +755,12 @@ class Mosquito {
       s * 0.45
     );
 
-
     line(
       -s * 0.2,
       0,
       -s * 0.4,
       s * 0.4
     );
-
 
     pop();
   }
@@ -982,77 +774,79 @@ class Mosquito {
 
     push();
 
-
     translate(
       this.x,
       this.y
     );
 
-
     noStroke();
 
-
-    let wingColor =
-      color(this.c);
-
-
-    wingColor.setAlpha(135);
+    const s =
+      this.size;
 
 
-    fill(wingColor);
+    fill(
+      this.topWingColor
+    );
 
 
     // 왼쪽 날개
+
     ellipse(
-      -this.size * 0.42,
-      -this.size * 0.2,
-      this.size * 0.9,
-      this.size * 0.55
+      -s * 0.42,
+      -s * 0.2,
+      s * 0.9,
+      s * 0.55
     );
 
 
     // 오른쪽 날개
+
     ellipse(
-      this.size * 0.42,
-      -this.size * 0.2,
-      this.size * 0.9,
-      this.size * 0.55
+      s * 0.42,
+      -s * 0.2,
+      s * 0.9,
+      s * 0.55
     );
 
 
     // 몸
-    fill(this.c);
 
+    fill(
+      this.baseColor
+    );
 
     ellipse(
       0,
-      this.size * 0.15,
-      this.size * 0.55,
-      this.size
+      s * 0.15,
+      s * 0.55,
+      s
     );
 
 
     // 머리
+
     circle(
       0,
-      -this.size * 0.36,
-      this.size * 0.38
+      -s * 0.36,
+      s * 0.38
     );
 
 
     // 주둥이
-    stroke(this.c);
+
+    stroke(
+      this.baseColor
+    );
 
     strokeWeight(1);
 
-
     line(
       0,
-      -this.size * 0.52,
+      -s * 0.52,
       0,
-      -this.size * 0.75
+      -s * 0.75
     );
-
 
     pop();
   }
@@ -1067,17 +861,14 @@ class Mosquito {
     if (
       this.state !== "wall"
     ) {
-
       return;
     }
-
 
     createDot(
       this.x,
       this.y,
       this.c
     );
-
 
     this.death = true;
   }
@@ -1092,16 +883,12 @@ class Mosquito {
     this.state =
       "burst";
 
-
     this.burstSize =
       this.size;
-
 
     this.burstAlpha =
       255;
 
-
-    // ★ 피 남김
     createDot(
       this.x,
       this.y,
@@ -1120,7 +907,6 @@ class Mosquito {
 
     this.burstAlpha -= 18;
 
-
     if (
       this.burstAlpha <= 0
     ) {
@@ -1134,28 +920,26 @@ class Mosquito {
 
     push();
 
-
     noStroke();
 
+    if (!this.burstColor) {
+      this.burstColor =
+        color(this.c);
+    }
 
-    let c =
-      color(this.c);
-
-
-    c.setAlpha(
+    this.burstColor.setAlpha(
       this.burstAlpha
     );
 
-
-    fill(c);
-
+    fill(
+      this.burstColor
+    );
 
     circle(
       this.x,
       this.y,
       this.burstSize
     );
-
 
     pop();
   }
