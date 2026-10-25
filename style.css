@@ -1,0 +1,177 @@
+/* noodle doodle — 화면 틀과 시트 (그림은 전부 canvas에서 그린다)
+   빈티지 일본 포스터처럼: 누런 종이 · 남색 선 · 붉은 포인트 */
+:root {
+  --paper: #fff4ee;
+  --cream: #fffaf6;
+  --navy: #2b3592;
+  --ink: #1b2266;
+  --red: #f05a22;
+  --sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  background: var(--ink);
+  overscroll-behavior: none;
+  font-family: var(--sans);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+body { display: flex; justify-content: center; }
+button { font: inherit; color: inherit; }
+
+/* 휴대폰 규격 기준. 아이패드·노트북에서는 가운데에 폰 크기로 뜬다 */
+#app {
+  position: relative;
+  width: min(100vw, 480px);
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  background: var(--paper);
+}
+#stage { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+/* 상단: 날짜 하나, 도움말 하나 */
+#top { position: absolute; top: max(18px, env(safe-area-inset-top)); left: 0; right: 0; pointer-events: none; }
+#date { text-align: center; font-size: 12px; font-weight: 800; letter-spacing: .12em; color: var(--navy); line-height: 30px; }
+#hist-btn, #title-btn, #guide-btn {
+  position: absolute; top: 0; right: 16px; width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid var(--navy); background: var(--cream); color: var(--navy); font-size: 15px; font-weight: 800;
+  pointer-events: auto; cursor: pointer;
+}
+#hist-btn { right: auto; left: 16px; width: auto; padding: 0 13px; border-radius: 15px; font-size: 13px; }
+#title-btn { right: 54px; width: 38px; border-radius: 15px; font-size: 13px; letter-spacing: -.02em; }
+#title-btn.off { background: none; color: var(--navy); opacity: .55; text-decoration: line-through; }
+#hist-btn:active, #title-btn:active, #guide-btn:active { background: var(--navy); color: var(--cream); }
+
+/* 따라 해보기 카드 */
+#coach {
+  position: absolute; z-index: 6; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px;
+  display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+  background: var(--cream); border: 2px solid var(--navy); border-radius: 12px; box-shadow: 3px 3px 0 var(--navy);
+  animation: drop .3s ease-out;
+}
+#coach[hidden] { display: none; }
+@keyframes drop { from { transform: translateY(-20px); opacity: 0; } }
+#co-n { flex: none; font-size: 13px; font-weight: 800; color: var(--red); }
+#coach p { flex: 1; min-width: 0; line-height: 1.35; }
+#coach strong { display: block; font-size: 15px; font-weight: 800; }
+#coach span { display: block; word-break: keep-all; font-size: 12px; color: #55608a; }
+#coach button { flex: none; border: 0; background: none; font-size: 12px; font-weight: 700; color: #55608a; cursor: pointer; padding: 6px 2px; }
+#co-end { color: var(--red) !important; }
+.touring #top { visibility: hidden; }
+
+/* 토스트 */
+#toast {
+  position: absolute; left: 50%; top: calc(env(safe-area-inset-top) + 92px);
+  transform: translate(-50%, -8px); opacity: 0; pointer-events: none;
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 9px 9px 16px; border-radius: 10px;
+  background: var(--navy); color: var(--cream);
+  font-size: 13px; font-weight: 700; white-space: nowrap;
+  transition: all .25s; z-index: 5;
+}
+#toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+#toast button { padding: 5px 11px; border: 0; border-radius: 7px; background: var(--cream); font-size: 12px; font-weight: 800; color: var(--navy); cursor: pointer; }
+#toast button[hidden] { display: none; }
+
+/* 시트 */
+.sheet {
+  position: absolute; inset: 0; z-index: 10; display: flex; align-items: flex-end;
+  background: rgba(22, 34, 79, .5);
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.sheet.open { opacity: 1; pointer-events: auto; }
+
+.panel {
+  display: none; width: 100%; max-height: 92%; overflow-y: auto;
+  padding: 26px 22px calc(22px + env(safe-area-inset-bottom));
+  background: var(--paper); border-top: 3px solid var(--navy); border-radius: 22px 22px 0 0;
+}
+.panel.on { display: block; animation: up .3s cubic-bezier(.2, 1.1, .4, 1); }
+@keyframes up { from { transform: translateY(55%); opacity: .3; } }
+
+.panel h2 { font-size: 22px; font-weight: 900; letter-spacing: -.03em; margin-bottom: 14px; }
+.meta { font-size: 13px; line-height: 1.5; margin-bottom: 12px; color: #55608a; font-weight: 600; }
+
+/* 메모 읽기: 크고 넉넉하게 */
+.dt { font-size: 28px !important; line-height: 1.25; margin-bottom: 16px !important; word-break: keep-all; }
+.memo {
+  min-height: 130px; padding: 18px; margin-bottom: 6px; background: var(--cream);
+  border: 2px solid var(--navy); border-radius: 12px;
+  font-size: 18px; line-height: 1.75; letter-spacing: -.01em; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere;
+}
+.memo.none { color: #8a90ad; }
+
+input, textarea {
+  width: 100%; padding: 14px; margin-bottom: 10px;
+  border: 2px solid var(--navy); border-radius: 12px; background: var(--cream);
+  font: inherit; font-size: 17px; /* 16px 미만이면 iOS가 입력할 때 화면을 확대한다 */
+  color: var(--ink); outline: none; resize: none;
+}
+input.big { font-size: 20px; font-weight: 800; }
+textarea { height: 120px; line-height: 1.6; }
+input:focus, textarea:focus { box-shadow: 3px 3px 0 var(--navy); }
+
+.label { margin: 14px 0 8px; font-size: 13px; font-weight: 800; display: flex; align-items: baseline; gap: 6px; }
+.label small { font-weight: 600; color: #7a82a3; }
+.link { margin-left: auto; border: 0; background: none; font-size: 12px; font-weight: 800; color: var(--red); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+.chips { display: flex; gap: 8px; margin-bottom: 8px; }
+.chips.wrap { flex-wrap: wrap; }
+.chip {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 4px 7px; border: 2px solid var(--navy); border-radius: 10px;
+  background: var(--cream); font-size: 13px; font-weight: 800; cursor: pointer;
+}
+.chip small { font-size: 10px; font-weight: 600; color: #7a82a3; }
+.chip svg { height: 44px; width: 30px; }
+.chip.on { background: var(--navy); color: var(--cream); }
+.chip.on small { color: rgba(251, 243, 224, .75); }
+.chip.sm { flex: 0 0 auto; flex-direction: row; gap: 6px; padding: 7px 12px; }
+.chip.sm b { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--navy); }
+
+.row { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 18px; }
+.row button:not(.link) { padding: 12px 22px; border: 2px solid var(--navy); border-radius: 10px; font-size: 14px; font-weight: 800; cursor: pointer; }
+.row button:not(.link):active { transform: translate(2px, 2px); }
+.row button[hidden] { display: none; }
+.row .link { margin-right: auto; margin-left: 0; }
+.main { background: var(--red); color: var(--cream); box-shadow: 3px 3px 0 var(--navy); }
+.ghost { background: var(--cream); }
+
+/* 양념 수정 */
+.mrow { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.mrow input { margin: 0; flex: 1; font-weight: 700; }
+.mrow .dot { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--navy); cursor: pointer; }
+.mrow .x { flex: none; border: 0; background: none; font-size: 12px; font-weight: 700; color: #7a82a3; cursor: pointer; padding: 8px; }
+.add { width: 100%; padding: 12px; margin-top: 4px; border: 2px dashed var(--navy); border-radius: 10px; background: none; font-size: 14px; font-weight: 800; color: var(--navy); cursor: pointer; }
+
+/* 도움말: 짧게. 왼쪽이 동작, 오른쪽이 뜻 */
+.tour {
+  display: block; width: 100%; margin-bottom: 14px; padding: 16px 18px; text-align: left; cursor: pointer;
+  border: 2px solid var(--navy); border-radius: 12px; background: var(--red); color: var(--cream); box-shadow: 3px 3px 0 var(--navy);
+  font-size: 19px; font-weight: 900;
+}
+.tour:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--navy); }
+.tour span { display: block; margin-top: 3px; font-size: 12px; font-weight: 600; opacity: .9; }
+.guide { list-style: none; }
+.guide li { cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1.5px solid rgba(43, 53, 146, .2); }
+.guide em { flex: none; min-width: 112px; padding: 5px 9px; border: 2px solid var(--navy); border-radius: 8px; background: var(--cream); font-size: 13px; font-weight: 800; font-style: normal; text-align: center; }
+.guide span { font-size: 15px; font-weight: 700; }
+
+/* 기록: 그날의 조형물 갤러리 */
+.gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.empty { grid-column: span 2; padding: 22px 0; text-align: center; color: #7a82a3; line-height: 1.6; }
+.day { padding: 12px; background: var(--cream); border: 2px solid var(--navy); border-radius: 12px; }
+.day canvas { display: block; width: 88px; height: 88px; margin: 0 auto 8px; }
+.dh { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 12px; font-weight: 800; }
+.dh span { opacity: .5; }
+.dh em { margin-left: auto; padding: 1px 8px; border-radius: 6px; background: var(--red); color: var(--cream); font-size: 10px; font-weight: 800; font-style: normal; }
+.it { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; font-size: 13px; }
+.it button { border: 0; background: none; font-size: 11px; font-weight: 700; color: var(--red); cursor: pointer; }
+
+.guide li::after { content: '해보기 ›'; margin-left: auto; font-size: 11px; font-weight: 800; color: var(--red); white-space: nowrap; }
+.guide li:active { background: rgba(43, 53, 146, .06); }
