@@ -9,14 +9,14 @@
 
 /* ---------- 1. 설정 ---------- */
 const PULL = 120;                 // 이만큼 당기고 놓으면 후루룩(완료)
-const CUT = 30;                   // 면 위에서 옆으로 이만큼 스와이프하면 잘린다
-const HANG = 22;                  // 면이 젓가락 위로 이만큼 넘어가 걸린다
+const CUT = 22;                   // 면 위에서 옆으로 이만큼 스와이프하면 잘린다
+const HANG = 0;
 const SPACING = 58;               // 면 사이 간격
 const MAXCAT = 6;                 // 양념(카테고리) 최대 개수
-const GOALS = [3, 5, 8];          // 기록 시트에서 고르는 하루 목표
+const GOALS = [3, 5, 10];         // 숫자를 터치할 때마다 바뀌는 하루 목표
 // 색은 미색 종이 · 남색 · 주황 포인트 · 분홍. 모양은 윤곽선 없이 납작하게
 const PAPER = '#fff4ee', CREAM = '#fffaf6', NAVY = '#2b3592', RED = '#f05a22', PINK = '#f8c8d0';
-const PALETTE = ['#f05a22', '#f5b82e', '#5aa67a', '#f4a6b7', '#2b3592', '#79a4e8'];
+const PALETTE = ['#f0520a', '#f5c02e', '#5aa67a', '#e3cfa3', '#f4a6b7', '#8a5a3c'];   // 기본: 빨강 · 노랑 · 초록 / 새 양념: 베이지 · 분홍 · 갈색
 const FONT = '"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif';
 const NUM = FONT;
 const CANVAS_TEXT = 'noodle doodle후루룩!한입에잘렸다완뚝오늘의면을터치해서첫뽑아요싹비웠다좋아요다익혔다지난여기서…0123456789/';
@@ -28,7 +28,7 @@ const TYPES = {
   kal:   { name: '칼국수', w: 30, amp: 3.5, freq: .05, color: '#efe0bd' },
   udon:  { name: '우동',   w: 36, amp: 2.5, freq: .035, color: '#dfc48f' }
 };
-const SIZES = [{ name: '짧게', len: 130 }, { name: '보통', len: 200 }, { name: '길게', len: 270 }];
+const SIZES = [{ name: '짧게', len: 150 }, { name: '보통', len: 215 }, { name: '길게', len: 280 }];
 
 /* ---------- 2. 데이터 ---------- */
 const $ = s => document.querySelector(s);
@@ -37,7 +37,6 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const pad = n => String(n).padStart(2, '0');
 const ymd = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const seed = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7) >>> 0;
 
 // jit/ph/wj/tj: 면마다 길이·물결·굵기가 조금씩 다르게 보이는 랜덤 값
 const mk = (title, memo, type, size, cat = null, age = 0) => ({
@@ -48,12 +47,13 @@ const baseCats = () => [{ id: 'school', name: '학교', color: PALETTE[0] }, { i
 const SAMPLES = [['기획안 검토', 'udon', 1, 'school'], ['우유 사기', 'ramen', 0, 'daily'], ['친구 만나기', 'kal', 2, 'appt'], ['답장하기', 'somen', 0, null], ['운동', 'ramen', 1, 'daily'], ['빨래', 'somen', 0, 'daily']];
 const sample = i => { const s = SAMPLES[i % SAMPLES.length]; return mk(s[0], '', s[1], s[2], s[3]); };
 
-const KEY = 'noodle-doodle-v9';
+const KEY = 'noodle-doodle-v10';
 let tour = null;                   // 따라 해보기 중이면 연습용 그릇이 따로 쓰이고, 저장은 하지 않는다
 let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   goal: 5, reached: {}, cats: baseCats(),
   noodles: []
 };
+if (!GOALS.includes(db.goal)) db.goal = 5;
 db.cats.forEach((c, i) => { if (!PALETTE.includes(c.color)) c.color = PALETTE[i % PALETTE.length]; });   // 예전 색은 새 팔레트로
 const save = () => { if (!tour) localStorage.setItem(KEY, JSON.stringify(db)); };
 const active = () => db.noodles.filter(n => !n.done);
@@ -82,12 +82,12 @@ const L = {};                      // 계산된 레이아웃
 function layout() {
   W = app.clientWidth; H = app.clientHeight; dpr = Math.min(window.devicePixelRatio || 1, 2);
   cv.width = W * dpr; cv.height = H * dpr;
-  L.chopY = H * .44;
+  L.chopY = H * .40;
   
-  L.rimY = H * .71; L.rimRx = W * .44; L.rimRy = Math.max(16, H * .03); L.bh = H * .17;
+  L.rimY = H * .72; L.rimRx = W * .5 - 16; L.rimRy = Math.max(16, H * .03); L.bh = H * .17;
   L.counter = L.rimY + L.bh * 1.02;                                   // 그릇이 놓인 카운터의 윗면
   const pr = document.createElement('div'); pr.style.cssText = 'position:fixed;top:0;padding-top:env(safe-area-inset-top);visibility:hidden'; document.body.appendChild(pr); L.st = pr.offsetHeight; pr.remove();
-  L.k = clamp((L.rimY - L.chopY - 30) / 290, .5, 1.1);   // 화면이 작으면 면 길이도 줄인다
+  L.k = clamp((L.rimY - L.chopY - 24) / 300, .5, 1.1);   // 화면이 작으면 면 길이도 줄인다
   makeSprites();
 }
 
@@ -97,7 +97,7 @@ function makeSprites() {
   b.fillStyle = PAPER; b.fillRect(0, 0, W, H);
   b.fillStyle = NAVY; b.globalAlpha = .07; b.textBaseline = 'alphabetic'; b.textAlign = 'left';       // 배경에 깔린 큰 로고
   const ls = Math.min((W - 96) / 3.4, 110); b.font = `900 ${ls}px ${FONT}`;
-  b.fillText('noodle', 14, H * .17 + ls); b.fillText('doodle', 14, H * .17 + ls * 1.85); b.globalAlpha = 1;
+  const b1 = 150 + 62 - ls * .065; b.fillText('noodle', 12, b1); b.fillText('doodle', 12, b1 + ls * .85); b.globalAlpha = 1;
 
   // 종이 같은 고운 알갱이
   const n = document.createElement('canvas'); n.width = n.height = 160;
@@ -118,7 +118,7 @@ function geom(n, r) {
   const T = TYPES[n.type], len = nlen(n), stretch = Math.max(0, r.st), pull = Math.max(0, r.pull);
   const tension = pull + stretch * .6, L2 = len + r.st + HANG, pts = [];
   r.w = T.w * n.tj * (1 + ageGrow(n)) * (1 - Math.min(.35, (pull + stretch) / 600));    // 당기면 가늘어진다
-  r.top = L.chopY - HANG - r.pull + (1 - back(r.rise)) * (L.rimY - L.chopY);                  // rise: 그릇에서 솟아오르는 등장
+  r.top = L.chopY - 15 + r.w / 2 - r.pull + (1 - back(r.rise)) * (L.rimY - L.chopY);                  // rise: 그릇에서 솟아오르는 등장
   for (let yy = 0; yy <= L2; yy += 5) {
     const s = yy / L2, k = clamp(yy / 30, 0, 1);
     const x = r.x + T.amp * n.wj * Math.max(.25, 1 - tension / 220) * Math.sin(yy * T.freq * n.wj + n.ph + t * 1.6) * k + r.sx * s * s;
@@ -140,7 +140,7 @@ function drawNoodle(n, r, alpha, glow) {   // 윤곽선 없이 납작한 색 한
 
 function label(n, r, alpha) {      // 제목은 면 안에 세로로. 밝은 면엔 남색, 어두운 면엔 크림색 글자
   if (db.titles === false || r.rise < .6 || !r.pts.length) return;
-  const S0 = HANG + 18, sp = 15, room = Math.floor((r.pts.length * 5 - S0 - 14) / sp), cs = [...n.title];
+  const S0 = HANG + 24, avail = r.pts.length * 5 - S0 - 6, cs = [...n.title], sp = clamp(avail / cs.length, 13, 17), room = Math.floor(avail / sp);
   const chars = cs.length > room ? [...cs.slice(0, Math.max(1, room - 1)), '…'] : cs;
   const c = parseInt(col(n).slice(1), 16), lum = .299 * (c >> 16) + .587 * ((c >> 8) & 255) + .114 * (c & 255);
   ctx.save(); ctx.globalAlpha = alpha; ctx.font = `800 13px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = lum < 150 ? CREAM : NAVY;
@@ -163,7 +163,7 @@ function pill(s, x, y, o) {        // 작은 안내 라벨: 문구는 전부 이
   rr(l, y - h / 2, w, h, 8); ctx.fillStyle = o.bg; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = NAVY; ctx.stroke();
   ctx.fillStyle = o.fg; ctx.fillText(s, l + px, y + 1); ctx.restore();
 }
-const cue = (s, x, y) => pill(s, x, y, { font: `800 12px ${FONT}`, bg: RED, fg: CREAM });
+const cue = () => {};              // 떠오르는 안내 문구는 쓰지 않는다 (화면을 어지럽힌다)
 
 // 납작한 포스터 글자 (색 하나)
 function otext(s, x, y, size, font, color = NAVY) {
@@ -171,27 +171,11 @@ function otext(s, x, y, size, font, color = NAVY) {
 }
 
 /* ---------- 5. 원 · 그릇 · 양념 · 토핑 ---------- */
-// 완료한 면이 한 가닥씩 감겨 만드는 조형물 (나의 그릇 기록에서 보인다)
-function art(c, R, list, goal, sd) {
-  const K = Math.max(goal, list.length), th = (1.5 + (sd % 4) * .3) * 6.283, dir = sd % 2 ? 1 : -1;
-  c.lineCap = c.lineJoin = 'round';
-  for (let i = 0; i < K; i++) {
-    const n = list[i], f0 = i / K, f1 = (i + 1) / K - .01;
-    c.beginPath();
-    for (let f = f0; f <= f1; f += .004) {
-      const a = dir * f * th - 1.57, r = R * (.5 + .42 * f) + (n ? Math.sin(f * 90) * TYPES[n.type].amp * .3 : 0);
-      c.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-    }
-    if (n) { c.strokeStyle = col(n); c.lineWidth = 3 + TYPES[n.type].w * .3; } else { c.strokeStyle = 'rgba(251,243,224,.2)'; c.lineWidth = 3; }
-    c.stroke();
-  }
-}
-
 // 양옆의 큰 세로 글자: 왼쪽은 이름, 오른쪽은 오늘의 숫자(목표를 채우면 "완뚝!")
 const SIDE = { y: 150, step: 62, size: 58 };
 function drawSide() {
   const done = doneToday().length, full = done > 0 && done >= db.goal;
-  ctx.save(); const sc = (1 + Math.sin(t * 2) * .006) * (1 + sunPop), cx = W - 32, cy = SIDE.y + SIDE.step; ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.translate(-cx, -cy);
+  ctx.save(); const sc = (1 + Math.sin(t * 2) * .006) * (1 + sunPop), cx = W - 36, cy = SIDE.y + SIDE.step; ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.translate(-cx, -cy);
   (full ? ['완', '뚝', '!'] : [`${done}`, '/', `${db.goal}`]).forEach((ch, i) => otext(ch, cx, SIDE.y + i * SIDE.step, SIDE.size, `900 ${SIDE.size - 8}px ${FONT}`, full || i === 0 ? RED : NAVY));
   ctx.restore();
 }
@@ -199,13 +183,13 @@ function drawSide() {
 // 라멘 건더기들. 후루룩 때 튀고, 완뚝하면 컨페티가 되고, 그릇 위에도 쌓인다
 const TOPS = 9;
 function topping(k, x, y, s) {
-  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.lineWidth = 1.8; ctx.strokeStyle = NAVY; ctx.lineJoin = ctx.lineCap = 'round';
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.lineWidth = 1.8; ctx.strokeStyle = 'rgba(0,0,0,0)'; ctx.shadowColor = 'rgba(43,53,146,.2)'; ctx.shadowOffsetY = 2; ctx.lineJoin = ctx.lineCap = 'round';   // 윤곽선 없이 납작하게, 옅은 그림자만
   const sh = c => { ctx.fillStyle = c; ctx.fill(); ctx.stroke(); };
   const circ = (a, b, r, c) => { ctx.beginPath(); ctx.arc(a, b, r, 0, 6.283); sh(c); };
   if (k === 0) { ctx.beginPath(); ctx.ellipse(0, 0, 18, 12, -.2, 0, 6.283); sh('#fffaf0'); circ(2, 0, 6, '#f3b83c'); }                                                // 반숙란
   else if (k === 1) { circ(0, 0, 11, '#fffaf6'); ctx.beginPath(); ctx.arc(0, 0, 5.5, 0, 6.283); ctx.strokeStyle = '#ef7b9a'; ctx.lineWidth = 3; ctx.stroke(); }          // 나루토마키: 흰 동그라미에 분홍 고리
   else if (k === 2) { ctx.beginPath(); ctx.arc(0, 0, 8, 0, 6.283); ctx.lineWidth = 8; ctx.stroke(); ctx.strokeStyle = '#6aa97a'; ctx.lineWidth = 4.5; ctx.stroke(); }          // 대파
-  else if (k === 3) { ctx.beginPath(); ctx.ellipse(0, 0, 17, 10, .15, 0, 6.283); sh('#c4694a'); ctx.beginPath(); ctx.ellipse(-2, -1, 10, 4, .15, 0, 6.283); ctx.stroke(); }          // 차슈
+  else if (k === 3) { ctx.beginPath(); ctx.ellipse(0, 0, 17, 10, .15, 0, 6.283); sh('#c4694a'); ctx.beginPath(); ctx.ellipse(-2, -1, 10, 4, .15, 0, 6.283); ctx.strokeStyle = '#a8503a'; ctx.stroke(); }          // 차슈
   else if (k === 4) { ctx.beginPath(); ctx.rect(-9, -12, 18, 24); sh('#2c4a3a'); }                                                                                                  // 김
   else if (k === 5) { circ(-6, 3, 5, '#f3b83c'); circ(5, 3, 5, '#f3b83c'); circ(0, -6, 5, '#f3b83c'); }                                                                             // 옥수수
   else if (k === 6) { ctx.beginPath(); ctx.ellipse(0, 0, 15, 7, 0, 0, 6.283); sh('#e3b878'); }                                                                                      // 멘마
@@ -218,7 +202,6 @@ const SLOTS = [[-.55, 0], [-.2, .25], [.2, -.2], [.55, .1], [-.35, -.3], [0, .35
 const blobPos = (i, n) => [W / 2 + (i - (n - 1) / 2) * 54, L.counter + 38];
 function blob(c, x, y, s, on) {    // 양념통 하나: 뚜껑, 몸통, 라벨
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
-  if (on) { ctx.strokeStyle = CREAM; ctx.lineWidth = 2.5; rr(-17, -22, 34, 42, 9); ctx.stroke(); }
   ctx.fillStyle = c.color; rr(-12, -10, 24, 25, 6); ctx.fill();
   ctx.fillStyle = 'rgba(255,250,246,.85)'; ctx.fillRect(-12, 0, 24, 8);
   ctx.fillStyle = CREAM; rr(-9, -18, 18, 9, 3); ctx.fill();
@@ -230,17 +213,16 @@ function drawBlobs() {             // 카운터 위에 늘어선 양념통
   ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   db.cats.forEach((c, i) => {
     const [x, y] = blobPos(i, nb), held = g && g.cat === c && g.mode === 'dragblob';
-    if (held) { ctx.strokeStyle = 'rgba(255,250,246,.4)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 4]); rr(x - 12, y - 18, 24, 33, 6); ctx.stroke(); ctx.setLineDash([]); }
-    else blob(c, x, y, back((Date.now() - (pops.get(c.id) || 0)) / 450), false);
+    if (!held) blob(c, x, y, back((Date.now() - (pops.get(c.id) || 0)) / 450), false);
     ctx.font = `800 10px ${FONT}`; ctx.fillStyle = CREAM; ctx.fillText(c.name.slice(0, 4), x, y + 29);
   });
   ctx.restore();
 }
 
 // 가게 처마의 천막(노렌): 조각 하나가 버튼 하나. 날짜 · 기록 · 제목 · 도움말
-const NOREN = [{ c: NAVY }, { t: '기록', c: RED }, { t: '제목', c: NAVY }, { t: '도움말', c: RED }];
+const NOREN = [{ c: NAVY }, { c: RED }, { t: '제목', c: NAVY }, { t: '도움말', c: RED }];
 const sway = [0, 0, 0, 0];
-const norenBox = i => { const gap = 5, w = (W - gap * 5) / 4; return { x: gap + i * (w + gap), w, y: L.st + 10, h: 64 }; };
+const norenBox = i => { const gap = 6, M = 16, w = (W - M * 2 - gap * 3) / 4; return { x: M + i * (w + gap), w, y: L.st + 10, h: 64 }; };
 function drawNoren() {
   ctx.save(); ctx.fillStyle = NAVY; rr(0, L.st + 4, W, 7, 3); ctx.fill();
   NOREN.forEach((p, i) => {
@@ -248,9 +230,10 @@ function drawNoren() {
     ctx.save(); ctx.translate(cx, b.y); ctx.rotate(Math.sin(t * 1.2 + i * .9) * .012 + sway[i] * Math.sin(t * 13)); ctx.translate(-cx, -b.y);
     ctx.fillStyle = p.c; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x + b.w, b.y); ctx.lineTo(b.x + b.w, b.y + b.h); ctx.lineTo(cx, b.y + b.h - 9); ctx.lineTo(b.x, b.y + b.h); ctx.closePath(); ctx.fill();
     ctx.fillStyle = CREAM; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if (i === 0) { const d = new Date(); ctx.font = `900 19px ${FONT}`; ctx.fillText(`${pad(d.getMonth() + 1)}.${pad(d.getDate())}`, cx, b.y + 24); ctx.font = `800 11px ${FONT}`; ctx.fillText('일월화수목금토'[d.getDay()] + '요일', cx, b.y + 44); }
+    if (i === 0) { const d = new Date(); ctx.font = `900 17px ${FONT}`; ctx.fillText(`${pad(d.getMonth() + 1)}.${pad(d.getDate())}`, cx, b.y + 30); }
+    else if (i === 1) { ctx.font = `900 17px ${FONT}`; ctx.fillText('일월화수목금토'[new Date().getDay()] + '요일', cx, b.y + 30); }
     else {
-      ctx.font = `900 15px ${FONT}`; ctx.globalAlpha = p.t === '제목' && db.titles === false ? .5 : 1; ctx.fillText(p.t, cx, b.y + 30);
+      ctx.font = `900 17px ${FONT}`; ctx.globalAlpha = p.t === '제목' && db.titles === false ? .5 : 1; ctx.fillText(p.t, cx, b.y + 30);
       if (p.t === '제목' && db.titles === false) { ctx.fillRect(cx - 14, b.y + 30, 28, 2); }
     }
     ctx.restore();
@@ -259,10 +242,72 @@ function drawNoren() {
 }
 const norenTouch = i => {
   sway[i] = .22; buzz(10);
-  if (i === 1) openHistory();
-  else if (i === 2) { db.titles = db.titles === false; save(); toast(db.titles === false ? '제목을 숨겼어요' : '제목을 보여요'); }
+  if (i === 2) { db.titles = db.titles === false; save(); toast(db.titles === false ? '제목이 숨겨졌어요' : '제목이 보여요'); }
   else if (i === 3) show('guide');
 };
+
+// 영수증: 카운터에서 위로 뽑아 올리면 지난 기록이 인쇄돼 있다
+const rc = { open: false, len: 34, scroll: 0, max: 0, drag: false, nudge: 0, day: null, hits: [] };
+const RW = 156, RSTUB = 34;
+const rcX = () => W - RW - 16;
+const rdays = () => {              // 기록이 있는 날(오래된 순) + 오늘
+  const set = new Set(db.noodles.filter(n => n.done).map(n => n.done)); set.add(ymd()); return [...set].sort();
+};
+function receiptLines() {
+  const days = rdays(); if (!days.includes(rc.day)) rc.day = ymd();
+  const d = rc.day, i = days.indexOf(d), list = db.noodles.filter(n => n.done === d).sort((a, b) => a.at - b.at), dt = new Date(d.replace(/-/g, '/'));
+  const out = [{ k: 'title', t: 'NOODLE DOODLE' }, { k: 'sep' }];
+  out.push({ k: 'nav', t: `${d.slice(5).replace('-', '.')} ${'일월화수목금토'[dt.getDay()]}`, prev: i > 0, next: i < days.length - 1 });
+  out.push({ k: 'day', t: `${list.length}/${db.goal}`, stamp: !!db.reached[d] });
+  if (!list.length) out.push({ k: 'none', t: db.noodles.some(n => n.done) ? '이 날은 비어 있어요' : '아직 완뚝한 그릇이 없습니다' });
+  list.forEach(n => out.push({ k: 'item', t: n.title, n }));
+  out.push({ k: 'sep' }, { k: 'sum', t: '연속 완뚝', r: `${streak()}일` }, { k: 'sum', t: '후루룩 합계', r: `${db.noodles.filter(n => n.done).length}가닥` }, { k: 'none', t: '다시 터치하면 들어가요' });
+  return out;
+}
+function fit(text, w) { let t2 = text; while (t2.length > 1 && ctx.measureText(t2).width > w) t2 = t2.slice(0, -1); return t2 === text ? text : t2.slice(0, -1) + '…'; }
+function drawReceipt() {
+  const x = rcX(), top = L.counter, lines = receiptLines(), LH = 22, ch = 30 + lines.length * LH + 16;
+  const maxLen = top - (L.st + 90); rc.max = Math.max(0, ch - maxLen); rc.scroll = clamp(rc.scroll, 0, rc.max);
+  if (!isFinite(rc.len)) rc.len = RSTUB;
+  if (!rc.drag) rc.len += ((rc.open ? Math.max(RSTUB, Math.min(ch, maxLen)) : RSTUB) - rc.len) * .22;
+  rc.len = Math.max(RSTUB, rc.len); rc.nudge *= .92;
+  const len = rc.len + (rc.open || rc.drag ? 0 : Math.sin(t * 3) * 1.5 + rc.nudge * 9 * Math.abs(Math.sin(t * 18)));
+  rc.hits = [];
+  ctx.fillStyle = RED; rr(x - 8, top - 6, RW + 16, 10, 4); ctx.fill();                                // 인쇄구
+  ctx.save(); ctx.beginPath(); ctx.rect(x, top - len, RW, len - 2); ctx.clip();
+  ctx.shadowColor = 'rgba(43,53,146,.25)'; ctx.shadowOffsetX = -3; ctx.shadowBlur = 0;
+  ctx.fillStyle = '#fffdf8'; ctx.fillRect(x, top - len, RW, len); ctx.shadowColor = 'transparent';
+  ctx.fillStyle = '#fffdf8'; ctx.beginPath(); ctx.moveTo(x, top - len); for (let i = 0; i <= 13; i++) ctx.lineTo(x + i * RW / 13, top - len - (i % 2 ? 0 : 5)); ctx.lineTo(x + RW, top - len + 2); ctx.lineTo(x, top - len + 2); ctx.fill();
+  ctx.textBaseline = 'middle';
+  if (len < 60) { ctx.fillStyle = NAVY; ctx.font = `800 11px ${FONT}`; ctx.textAlign = 'center'; ctx.fillText('영수증 ▲', x + RW / 2, top - len + 15); }
+  else {
+    let y = top - len + 28 - rc.scroll;
+    const tri = (cx, cy, dir, on) => { if (!on) return; ctx.fillStyle = NAVY; ctx.beginPath(); ctx.moveTo(cx + dir * 4, cy); ctx.lineTo(cx - dir * 3, cy - 5); ctx.lineTo(cx - dir * 3, cy + 5); ctx.closePath(); ctx.fill(); };
+    lines.forEach(l => {
+      const cy = y + LH / 2; y += LH;
+      if (cy < top - len + 8 || cy > top) return;
+      ctx.fillStyle = NAVY;
+      if (l.k === 'title') { ctx.font = `900 13px ${FONT}`; ctx.textAlign = 'center'; ctx.fillText(l.t, x + RW / 2, cy); }
+      else if (l.k === 'sep') { ctx.fillRect(x + 12, cy, RW - 24, 1.2); }
+      else if (l.k === 'nav') {
+        ctx.font = `900 14px ${FONT}`; ctx.textAlign = 'center'; ctx.fillText(l.t, x + RW / 2, cy);
+        tri(x + 20, cy, -1, l.prev); tri(x + RW - 20, cy, 1, l.next);
+        rc.hits.push({ x0: x, x1: x + 46, y0: cy - 14, y1: cy + 14, a: 'prev', on: l.prev }, { x0: x + RW - 46, x1: x + RW, y0: cy - 14, y1: cy + 14, a: 'next', on: l.next });
+      }
+      else if (l.k === 'day') { ctx.font = `900 13px ${FONT}`; ctx.textAlign = 'left'; ctx.fillText(l.t, x + 12, cy);
+        if (l.stamp) { ctx.save(); ctx.translate(x + RW - 38, cy); ctx.rotate(-.18); ctx.strokeStyle = RED; ctx.fillStyle = RED; ctx.lineWidth = 1.5; rr(-17, -9, 34, 18, 4); ctx.stroke(); ctx.font = `900 11px ${FONT}`; ctx.textAlign = 'center'; ctx.fillText('완뚝', 0, 1); ctx.restore(); } }
+      else if (l.k === 'item') {
+        ctx.font = `700 12.5px ${FONT}`; ctx.textAlign = 'left'; ctx.fillText('· ' + fit(l.t, RW - 62), x + 12, cy);
+        ctx.strokeStyle = 'rgba(43,53,146,.55)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; const ex = x + RW - 20; ctx.beginPath(); ctx.moveTo(ex - 4, cy - 4); ctx.lineTo(ex + 4, cy + 4); ctx.moveTo(ex + 4, cy - 4); ctx.lineTo(ex - 4, cy + 4); ctx.stroke();
+        rc.hits.push({ x0: x + RW - 40, x1: x + RW, y0: cy - LH / 2, y1: cy + LH / 2, a: 'del', n: l.n, on: true });
+      }
+      else if (l.k === 'sum') { ctx.font = `800 12px ${FONT}`; ctx.textAlign = 'left'; ctx.fillText(l.t, x + 12, cy); ctx.textAlign = 'right'; ctx.fillText(l.r, x + RW - 12, cy); }
+      else { ctx.fillStyle = 'rgba(43,53,146,.5)'; ctx.font = `600 11px ${FONT}`; ctx.textAlign = 'left'; ctx.fillText(l.t, x + 12, cy); }
+    });
+  }
+  ctx.restore();
+}
+const inReceipt = (px, py) => px > rcX() - 6 && px < rcX() + RW + 6 && py < L.counter + 10 && py > L.counter - Math.max(rc.len, RSTUB) - 24;
 
 function drawBowl() {              // 납작한 그릇: 분홍 윗부분, 남색 줄 둘, 주황 아랫부분, 굽
   const cx = W / 2, y = L.rimY, rx = L.rimRx, ry = L.rimRy, bh = L.bh, fy = y + bh * 1.02;
@@ -289,7 +334,7 @@ const fx = [], fly = [];
 const confetti = (x, y, n, spread, up, sc = 1) => { for (let i = 0; i < n; i++) fx.push({ k: (Math.random() * TOPS) | 0, x, y, vx: rnd(-1, 1) * spread, vy: -rnd(.3, 1) * up, g: .22, rot: rnd(0, 6.28), vr: rnd(-.25, .25), s: rnd(.8, 1.3) * sc, life: 1, dec: rnd(.008, .016), ph: rnd(0, 6.28) }); };
 const rain = n => { for (let i = 0; i < n; i++) fx.push({ k: (Math.random() * TOPS) | 0, x: rnd(0, W), y: rnd(-120, -20), vx: rnd(-1, 1), vy: rnd(1.5, 4), g: .05, rot: rnd(0, 6.28), vr: rnd(-.12, .12), s: rnd(.6, .9), life: 1, dec: .005, ph: rnd(0, 6.28) }); };
 // 큰 글자: 'big'은 포스터 글자, 'pill'은 작은 안내 라벨
-const say = (text, x, y, size, kind = 'pill') => { const hw = [...text].length * size * .55 / 2 + 14; fx.push({ text, x: clamp(x, hw, W - hw), y, vx: 0, vy: -.8, g: 0, life: 1, dec: .012, size, kind }); };
+const say = (text, x, y, size, kind = 'pill') => { if (kind !== 'big') return; const hw = [...text].length * size * .55 / 2 + 14; fx.push({ text, x: clamp(x, hw, W - hw), y, vx: 0, vy: -.8, g: 0, life: 1, dec: .012, size, kind }); };
 const slash = (x0, y0, x1, y1) => fx.push({ slash: [x0, y0, x1, y1], life: 1, dec: .1, vx: 0, vy: 0, g: 0 });
 const buzz = p => navigator.vibrate && navigator.vibrate(p);   // 진동은 안드로이드에서만 동작
 
@@ -324,7 +369,6 @@ function slurpAll(list) {          // 한 가닥이든 한입에 여러 가닥�
   });
   const cnt = doneToday().length, wait = 350 + list.length * 110;
   if (cnt >= db.goal && !db.reached[ymd()]) { db.reached[ymd()] = true; setTimeout(celebrate, wait); }
-  else if (!active().length) setTimeout(() => say('그릇 싹 비웠다!', W / 2, H * .5, 17), wait);
   sunPop = .04; buzz(list.length > 1 ? [30, 30, 60] : 30); save();
   toast(`${cnt}/${db.goal} · ${list.length > 1 ? list.length + '가닥' : list[0].title}`, () => {
     list.forEach(n => { n.done = null; R(n).x = null; });
@@ -349,6 +393,16 @@ function cutNoodle(n, dir) {       // 옆으로 스와이프: 면이 잘려 떨�
   buzz(20); save(); did('cut');
   toast('면을 잘랐어요', () => { db.noodles.push(n); R(n).x = null; save(); });
 }
+function changeGoal() {           // 숫자 터치: 3 → 5 → 10 가닥
+  db.goal = GOALS[(GOALS.indexOf(db.goal) + 1) % GOALS.length]; sunPop = .08; buzz(15); save();
+  say(`목표 ${db.goal}가닥`, W - 90, SIDE.y + SIDE.step * 2.4, 14); did('sun');
+  if (!tour && doneToday().length >= db.goal && !db.reached[ymd()]) { db.reached[ymd()] = true; setTimeout(celebrate, 300); }
+}
+function removeRecord(n) {         // 영수증에서 기록 삭제 (되돌릴 수 있다)
+  const d = n.done; db.noodles = db.noodles.filter(m => m !== n); buzz(15);
+  if (db.noodles.filter(m => m.done === d).length < db.goal) delete db.reached[d];
+  save(); toast(`'${n.title}' 기록을 지웠어요`, () => { db.noodles.push(n); if (db.noodles.filter(m => m.done === d).length >= db.goal) db.reached[d] = true; save(); });
+}
 function assign(n, c) {            // 양념 방울을 면에 놓으면 색이 입혀진다 (같은 양념이면 벗겨진다)
   n.cat = n.cat === c.id ? null : c.id; save(); R(n).pv = -9; buzz(15);
   confetti(R(n).x, L.chopY + 40, 5, 3, 4, .7); did('assign');
@@ -371,9 +425,10 @@ function nearest(x, y, tol) {      // 점 (x,y)에서 가장 가까운 면과 �
 
 function hitTest(x, y) {           // 양념 > 면 > 숫자 > 그릇 > 빈 곳
   const nb = db.cats.length;
+  if (inReceipt(x, y)) return { kind: 'rcpt' };
   if (!tour) for (let i = 0; i < 4; i++) { const b = norenBox(i); if (x > b.x && x < b.x + b.w && y > L.st && y < b.y + b.h) return { kind: 'noren', i }; }
   for (let i = 0; i < nb; i++) { const [bx, by] = blobPos(i, nb); if (Math.abs(x - bx) < 24 && Math.abs(y - by) < 30) return { kind: 'blob', i }; }
-  const h = nearest(x, y, 24);
+  const h = nearest(x, y, 30);
   if (h) return { kind: 'noodle', n: h.n };                                   // 면: 터치·위로·옆으로
   if (x > W - 66 && y > 105 && y < SIDE.y + SIDE.step * 2.7) return { kind: 'sun' };      // 오른쪽 큰 숫자
   if (y > L.rimY - L.rimRy * 3 && Math.abs(x - W / 2) < L.rimRx * 1.05) return { kind: 'bowl' };
@@ -387,12 +442,15 @@ function release() {               // 잡고 있던 것을 모두 놓는다 (제
 
 cv.addEventListener('pointerdown', e => {
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  if (!ptrs.size && g) { clearTimeout(g.long); g = null; release(); rc.drag = false; }          // 놓친 터치가 남아 있으면 정리
   const p = pos(e); ptrs.set(e.pointerId, { x: p.x, y: p.y });
   if (ptrs.size === 2) { startMulti(); return; }
   if (ptrs.size > 2 || g) return;
-  const h = hitTest(p.x, p.y);
+  let h = hitTest(p.x, p.y);
+  if (rc.open && h.kind !== 'rcpt') { rc.open = false; h = { kind: 'none' }; }       // 영수증 밖을 터치하면 접힌다
   g = { x0: p.x, y0: p.y, x: p.x, y: p.y, px: p.x, py: p.y, pt: performance.now(), vx: 0, vy: 0, mode: h.kind, n: h.n, i: h.i, moved: false };
   if (h.kind === 'blob') g.cat = db.cats[h.i];
+  if (h.kind === 'rcpt') { g.ro = rc.open; g.rs0 = rc.scroll; g.rl0 = rc.len; }
   scrollV = 0;
 });
 
@@ -407,12 +465,18 @@ cv.addEventListener('pointermove', e => {
   if (!g.moved && Math.hypot(dx, dy) > 8) {
     g.moved = true; clearTimeout(g.long);
     const up = dy < 0 && -dy > Math.abs(dx), side = Math.abs(dx) > Math.abs(dy), m = g.mode;
-    if (m === 'noodle') g.mode = up ? 'pull' : side ? 'cut' : 'none';       // 위로 → 당기기, 옆으로 → 자르기
+    if (m === 'noodle') g.mode = (dy < 0 && -dy > Math.abs(dx) * 1.3) ? 'pull' : (Math.abs(dx) > Math.abs(dy) * .5) ? 'cut' : 'none';       // 위로 → 당기기, 옆으로 → 자르기
     else if (m === 'blob') g.mode = 'dragblob';
     else if (['sun', 'bowl', 'pan', 'noren'].includes(m)) g.mode = 'pan';
   }
   const m = g.mode;
-  if (m === 'pan') scrollX = clamp(scrollX - (p.x - g.x), 0, G.max);
+  if (m === 'pan') {
+    scrollX = clamp(scrollX - (p.x - g.x), 0, G.max);
+    if (G.max < 1 && Math.abs(p.x - g.x0) > CUT) {                      // 빈 곳에서 시작해도 면을 가로질러 스와이프하면 잘린다
+      const h = nearest(p.x, p.y, 18);
+      if (h) { slash(g.x0, g.y0, p.x, p.y); cutNoodle(h.n, Math.sign(p.x - g.x0)); g.mode = 'none'; }
+    }
+  }
   else if (m === 'cut') { if (Math.abs(p.x - g.x0) > CUT) { slash(g.x0 - 10 * Math.sign(p.x - g.x0), g.y0, p.x, g.y0 + (p.y - g.y0) * .5); cutNoodle(g.n, Math.sign(p.x - g.x0)); g.mode = 'none'; } }
   else if (m === 'pull') {
     const was = R(g.n).pull >= PULL, v = clamp(-dy * .9, 0, 420);
@@ -420,6 +484,10 @@ cv.addEventListener('pointermove', e => {
     if (!was && v >= PULL) buzz(12);
   }
   else if (m === 'dragblob') { const h = nearest(p.x, p.y, 34); hoverN = h ? h.n : null; }
+  else if (m === 'rcpt') {
+    if (!g.ro) { rc.drag = true; rc.len = clamp(g.rl0 + (g.y0 - p.y), RSTUB, L.counter - (L.st + 90)); }
+    else rc.scroll = clamp(g.rs0 - (p.y - g.y0), 0, rc.max);
+  }
   g.x = p.x; g.y = p.y;
 });
 
@@ -429,10 +497,23 @@ function end(cancel) {
   const m = g.mode, n = g.n, r = n && R(n);
   if (m === 'pull') { if (!cancel && (r.pull >= PULL || (g.vy < -1.2 && r.pull > 50))) slurpAll(g.sel); else release(); }   // 빠르게 튕겨 올려도 완료
   else if (m === 'dragblob') { const h = nearest(g.x, g.y, 34); if (!cancel && h) assign(h.n, g.cat); }
+  else if (m === 'rcpt') {           // 위로 당기면 나오고, 다시 터치하거나 아래로 밀면 들어간다
+    rc.drag = false;
+    if (g.ro) {
+      if (!g.moved) {
+        const h = rc.hits.find(q => q.on && g.x0 > q.x0 && g.x0 < q.x1 && g.y0 > q.y0 && g.y0 < q.y1);
+        if (h && h.a === 'del') removeRecord(h.n);
+        else if (h) { const ds = rdays(), i = ds.indexOf(rc.day) + (h.a === 'next' ? 1 : -1); rc.day = ds[clamp(i, 0, ds.length - 1)]; rc.scroll = 0; buzz(8); }
+        else rc.open = false;
+      } else if (rc.scroll <= 0 && g.y - g.y0 > 60) rc.open = false;
+    }
+    else if (g.moved && (rc.len > 64 || g.y0 - g.y > 24)) { rc.open = true; if (tour) did('receipt'); }
+    else rc.nudge = 1;               // 터치만 하면 열리지 않고 살짝 들썩여 당기라고 알려준다
+  }
   else if (m === 'pan') scrollV = clamp(-g.vx * 16, -40, 40);                                  // 놓은 뒤 관성
   else if (!g.moved && !cancel) {
     if (m === 'noodle') { r.pv = -7; openDetail(n); }
-    else if (m === 'sun') { if (tour) { say('지난 그릇이 열려요', W / 2, 250, 13); did('sun'); } else openHistory(); }
+    else if (m === 'sun') changeGoal();
     else if (m === 'noren') norenTouch(g.i);
     else if (m === 'bowl') { if (tour) { say('새 면은 여기서 만들어요', W / 2, L.rimY - 30, 13); did('bowl'); } else openForm(); }
   }
@@ -467,16 +548,18 @@ cv.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); if (g && g
 const STEPS = [
   { k: 'tap',     t: '면 터치',        d: '면을 한 번 터치', need: 3 },
   { k: 'bowl',    t: '그릇 터치',      d: '그릇을 한 번 터치', need: 3 },
-  { k: 'sun',     t: '숫자 터치',      d: '오른쪽 큰 숫자를 터치', need: 3 },
+  { k: 'sun',     t: '숫자 터치',      d: '오른쪽 큰 숫자를 터치해 목표 바꾸기', need: 3 },
   { k: 'slurp',   t: '위로 스와이프',  d: '면을 위로 스와이프하고 놓기', need: 4 },
   { k: 'cut',     t: '옆으로 스와이프', d: '면을 옆으로 스와이프', need: 4 },
   { k: 'multi',   t: '두 손가락 집기', d: '면 두 가닥을 집어 위로 올리기', need: 4 },
-  { k: 'assign',  t: '양념 끌어놓기',  d: '양념통을 면 위로 끌어다 놓기', need: 3 }
+  { k: 'assign',  t: '양념 끌어놓기',  d: '양념통을 면 위로 끌어다 놓기', need: 3 },
+  { k: 'receipt', t: '영수증 당기기',  d: '오른쪽 아래 영수증을 위로 끌어올리기', need: 3 }
 ];
 let snap = '';
 
 function ensure(k) { while (active().length < k) db.noodles.push(sample(db.noodles.length)); }
-function startTour(from) {         // 도움말의 한 줄을 눌러 그 동작만 연습한다
+function startTour(from) {
+  rc.open = false;         // 도움말의 한 줄을 눌러 그 동작만 연습한다
   closeSheet(); snap = JSON.stringify(db); filter = null; g = null; ptrs.clear();
   tour = { i: from - 1, done: false };
   db = { goal: 5, reached: {}, cats: baseCats(), noodles: [0, 1, 2, 3, 4].map(sample) };
@@ -496,8 +579,8 @@ function did(k) {                  // 터치가 일어날 때마다 불린다. �
 }
 function endTour(all) {
   closeSheet(); db = JSON.parse(snap); tour = null; filter = null; g = null; ptrs.clear();
-  document.body.classList.remove('touring'); $('#coach').hidden = true; 
-  if (all) { rain(12); say('다 익혔다!', W / 2, H * .45, 44, 'big'); setTimeout(() => toast('이제 마음껏 만져보세요'), 900); }
+  rc.open = false; rc.len = RSTUB; rc.scroll = 0; document.body.classList.remove('touring'); $('#coach').hidden = true; 
+  if (all) rain(12);
 }
 $('#guide-list').onclick = e => { const li = e.target.closest('li[data-s]'); if (li) startTour(+li.dataset.s); };
 $('#co-end').onclick = () => endTour(false);
@@ -513,8 +596,12 @@ function ghost() {                 // 지금 단계의 손가락 시범: 크림�
   else if (s.k === 'bowl') fs = [[[W / 2 - 40, L.rimY + L.bh * .1]]];
   else if (s.k === 'cut') fs = [[[ra.x - 30, mid], [ra.x + 34, mid]]];
   else if (s.k === 'multi' && rb) fs = [[[ra.x - 16, my], [ra.x - 16, my - 170]], [[rb.x + 16, my], [rb.x + 16, my - 170]]];
-  else if (s.k === 'assign') fs = [[blobPos(0, db.cats.length), [ra.x, y0 + len * .5]]];
-  else if (s.k === 'sun') fs = [[[W - 32, SIDE.y + SIDE.step]]];
+  else if (s.k === 'assign') {       // 노랑(일상) 양념통을 노랑이 아닌 면에 끌어다 놓는다
+    const ji = Math.max(0, db.cats.findIndex(c => c.id === 'daily')), tn = act.find(n => n.cat !== 'daily') || a, rt2 = R(tn);
+    fs = [[blobPos(ji, db.cats.length), [rt2.x, rt2.top + nlen(tn) * .5]]];
+  }
+  else if (s.k === 'receipt') fs = [[[rcX() + RW / 2, L.counter - 14], [rcX() + RW / 2, L.counter - 230]]];
+  else if (s.k === 'sun') fs = [[[W - 36, SIDE.y + SIDE.step]]];
   const CY = 2.6, u = (t % CY) / CY, ease = x => x * x * (3 - 2 * x), st0 = hold ? .42 : .15;
   fs.forEach(f => {
     const a0 = f[0], a1 = f[f.length - 1], mv = f.length > 1;
@@ -583,13 +670,15 @@ function frame(ms) {
   if (g && g.mode === 'dragblob') blob(g.cat, g.x, g.y - 26, 1.25, true);   // 손에 들린 양념
 
   if (!act.length) {                                                  // 면이 하나도 없을 때의 문구
-    const msg = doneToday().length ? ['오늘 면은', '싹 비웠어요'] : ['그릇을 터치해', '첫 면을 뽑아요'];
-    msg.forEach((s, i) => otext(s, W / 2, L.chopY + 80 + i * 46, 32, `900 32px ${FONT}`));
+    const msg = ['그릇을 터치해', '새로운 가닥을 추가'];
+    msg.forEach((s, i) => otext(s, W / 2, (L.chopY + L.rimY - L.rimRy) / 2 - 21 + i * 42, 28, `900 28px ${FONT}`));
   }
 
-  drawFx(); ghost();
+  drawReceipt(); drawFx(); ghost();
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = .1; ctx.fillStyle = grain; ctx.fillRect(0, 0, W, H); ctx.restore();   // 종이 질감
-  requestAnimationFrame(frame);
+  const resetTouch = () => { ptrs.clear(); if (g) { clearTimeout(g.long); g = null; } release(); rc.drag = false; };
+window.addEventListener('blur', resetTouch); document.addEventListener('visibilitychange', resetTouch); cv.addEventListener('lostpointercapture', e => { ptrs.delete(e.pointerId); });
+requestAnimationFrame(frame);
 }
 
 /* ---------- 12. 시트(입력·읽기·양념·기록·안내) ---------- */
@@ -618,10 +707,11 @@ $('#f-sizes').onclick = e => { const c = e.target.closest('.chip'); if (c) { for
 $('#f-cats').onclick = e => { const c = e.target.closest('.chip'); if (c) { form.cat = c.dataset.k || null; paintChips(); } };
 $('#f-cats-edit').onclick = () => openMgr(null, 'form');
 
+$('#f-title').oninput = () => { $('#f-count').textContent = `${[...$('#f-title').value].length}/12`; };
 function openForm(n) {
   editing = n || null; form = { type: n ? n.type : 'ramen', size: n ? n.size : 1, cat: n ? n.cat : null };
-  $('#form-title').textContent = n ? '수정' : '새 면';
-  $('#f-title').value = n ? n.title : ''; $('#f-memo').value = n ? n.memo : '';
+  $('#form-title').textContent = n ? '수정' : '새로운 가닥';
+  $('#f-title').value = n ? n.title : ''; $('#f-memo').value = n ? n.memo : ''; $('#f-count').textContent = `${[...$('#f-title').value].length}/12`;
   fillCats(); show('form');
 }
 $('#f-save').onclick = () => {
@@ -662,33 +752,6 @@ $('#m-add').onclick = () => {
 };
 $('#m-done').onclick = () => { db.cats.forEach(c => { if (!c.name.trim()) c.name = '양념'; }); save(); if (mgrBack === 'form') { fillCats(); show('form'); } else closeSheet(); };
 
-function thumb(el, list, reached, d) {   // 그날의 조형물 썸네일
-  const c = el.getContext('2d'); c.scale(2, 2); c.translate(44, 44);
-  c.fillStyle = reached ? RED : NAVY; c.beginPath(); c.arc(0, 0, 40, 0, 6.283); c.fill();
-  art(c, 36, list.sort((a, b) => a.at - b.at), db.goal, seed(d));
-}
-function openHistory() {
-  const days = {}; db.noodles.filter(n => n.done).forEach(n => (days[n.done] = days[n.done] || []).push(n));
-  const keys = Object.keys(days).sort().reverse();
-  $('#h-sum').textContent = `연속 ${streak()}일 완뚝 · 지금까지 ${db.noodles.filter(n => n.done).length}가닥 후루룩`;
-  $('#h-goals').innerHTML = GOALS.map(v => `<button class="chip${v === db.goal ? ' on' : ''}" data-g="${v}"><b>${v}그릇</b></button>`).join('');
-  $('#h-list').innerHTML = keys.length ? keys.map(d => `
-    <div class="day"><canvas data-d="${d}" width="176" height="176"></canvas>
-    <div class="dh"><b>${d.slice(5).replace('-', '.')}</b><span>${days[d].length}</span>${db.reached[d] ? '<em>완뚝</em>' : ''}</div>
-    ${days[d].map(n => `<div class="it"><span>${esc(n.title)}</span><button data-id="${n.id}">복구</button></div>`).join('')}</div>`).join('')
-    : '<p class="empty">아직 후루룩한 면이 없어요.<br>면을 위로 스와이프해보세요</p>';
-  document.querySelectorAll('#h-list canvas').forEach(el => thumb(el, days[el.dataset.d], db.reached[el.dataset.d], el.dataset.d));
-  show('history');
-}
-$('#h-goals').onclick = e => { const b = e.target.closest('[data-g]'); if (b) { db.goal = +b.dataset.g; save(); sunPop = .05; openHistory(); } };
-$('#h-list').onclick = e => {
-  const b = e.target.closest('button'), n = b && db.noodles.find(x => x.id === +b.dataset.id);
-  if (!n) return;
-  n.done = null; R(n).x = null;
-  if (doneToday().length < db.goal) delete db.reached[ymd()];
-  save(); openHistory();
-};
-
 /* ---------- 13. 토스트 · 날짜 · 폰트 · 시작 ---------- */
 let toastT;
 function toast(msg, undo) {
@@ -706,5 +769,6 @@ warm(CANVAS_TEXT + db.noodles.map(n => n.title).join('') + db.cats.map(c => c.na
 new ResizeObserver(layout).observe(app);
 layout();
 if (document.fonts) document.fonts.ready.then(() => makeSprites());
-if (!localStorage.getItem('noodle-doodle-seen9')) { show('guide'); localStorage.setItem('noodle-doodle-seen6', '1'); }   // 처음 여는 사람에게는 도움말부터
+const resetTouch = () => { ptrs.clear(); if (g) { clearTimeout(g.long); g = null; } release(); rc.drag = false; };
+window.addEventListener('blur', resetTouch); document.addEventListener('visibilitychange', resetTouch); cv.addEventListener('lostpointercapture', e => { ptrs.delete(e.pointerId); });
 requestAnimationFrame(frame);

@@ -26,8 +26,9 @@
 
     <div id="sheet" class="sheet">
       <section class="panel" data-view="form">
-        <h2 id="form-title">새 면</h2>
-        <input id="f-title" class="big" maxlength="10" placeholder="할 일">
+        <h2 id="form-title">새로운 가닥</h2>
+        <p class="label">제목 <small id="f-count">0/12</small></p>
+        <input id="f-title" class="big" maxlength="12" placeholder="할 일 (최대 12자)">
         <textarea id="f-memo" placeholder="메모를 적어두세요"></textarea>
         <p class="label">종류</p>
         <div class="chips" id="f-types"></div>
@@ -60,26 +61,17 @@
         <div class="row"><button class="main" id="m-done">완료</button></div>
       </section>
 
-      <section class="panel" data-view="history">
-        <h2>나의 그릇</h2>
-        <p id="h-sum" class="meta"></p>
-        <p class="label">하루 목표</p>
-        <div class="chips" id="h-goals"></div>
-        <div id="h-list" class="gallery"></div>
-        <div class="row"><button class="main" data-close>닫기</button></div>
-      </section>
-
       <section class="panel" data-view="guide">
         <h2>도움말</h2>
-        <p class="meta">줄을 터치하면 직접 해볼 수 있어요</p>
         <ul class="guide" id="guide-list">
           <li data-s="0"><em>면 터치</em><span>메모 읽기 · 수정</span></li>
-          <li data-s="1"><em>그릇 터치</em><span>새 면 만들기</span></li>
-          <li data-s="2"><em>숫자 터치</em><span>후루룩한 기록 보기</span></li>
+          <li data-s="1"><em>그릇 터치</em><span>새로운 가닥 추가</span></li>
+          <li data-s="2"><em>숫자 터치</em><span>하루 목표 변경</span></li>
           <li data-s="3"><em>위로 스와이프</em><span>후루룩 (완료)</span></li>
           <li data-s="4"><em>옆으로 스와이프</em><span>자르기 (삭제)</span></li>
           <li data-s="5"><em>두 손가락 집기</em><span>한입에 여러 개</span></li>
           <li data-s="6"><em>양념 끌어놓기</em><span>면에 색 입히기</span></li>
+          <li data-s="7"><em>영수증 당기기</em><span>지난 기록 보기</span></li>
         </ul>
         <div class="row"><button class="main" data-close>닫기</button></div>
       </section>
