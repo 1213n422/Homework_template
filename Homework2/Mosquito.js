@@ -1,3 +1,12 @@
+// 잡고 흔들기 설정
+const SHAKE_MIN_STEP = 4;     // 이만큼 움직여야 흔든 것으로 센다
+const SHAKE_LIMIT = 8;        // 방향을 이만큼 바꾸면 어지러워진다
+const SHAKE_DECAY = 0.03;     // 프레임마다 줄어드는 흔든 횟수
+const DIZZY_FRAMES = 36;      // 빙글빙글 도는 시간
+const TAP_FRAMES = 20;        // 이 시간 안에 떼면 톡 터치
+const TAP_MOVE = 12;          // 이만큼보다 덜 움직여야 톡 터치
+
+
 class Mosquito {
 
   constructor(x, y) {
@@ -89,6 +98,21 @@ class Mosquito {
     // 제거 효과
     this.burstSize = 0;
     this.burstAlpha = 255;
+
+
+    // 잡고 흔들기
+    this.heldFrames = 0;
+    this.heldMoved = 0;
+    this.shake = 0;
+    this.lastDX = 0;
+    this.lastDY = 0;
+    this.wobble = 0;
+
+    this.dizzyTimer = 0;
+    this.spin = 0;
+
+    this.fallVX = 0;
+    this.fallVY = 0;
   }
 
 
@@ -124,6 +148,18 @@ class Mosquito {
 
     else if (this.state === "burst") {
       this.updateBurst();
+    }
+
+    else if (this.state === "held") {
+      this.updateHeld();
+    }
+
+    else if (this.state === "dizzy") {
+      this.updateDizzy();
+    }
+
+    else if (this.state === "fall") {
+      this.updateFall();
     }
   }
 
@@ -373,17 +409,30 @@ class Mosquito {
       );
 
 
-    this.angle +=
-      difference * 0.05;
+    // 목표 가까이에서는 방향을 빨리 틀고 속도를 줄여서,
+    // 목표 주위를 빙글빙글 도는 일이 없게 한다
+    const turn =
+      d < 100
+        ? 0.3
+        : 0.05;
 
+    this.angle +=
+      difference * turn;
+
+
+    const landingSpeed =
+      min(
+        d,
+        2.5
+      );
 
     this.x +=
       cos(this.angle) *
-      2.5;
+      landingSpeed;
 
     this.y +=
       sin(this.angle) *
-      2.5;
+      landingSpeed;
 
 
     let wantedAngle =
@@ -951,16 +1000,160 @@ class Mosquito {
 
 
   // =================================================
+  // 멈춰있는 모기 잡기
+  // =================================================
+
+  grab(x, y) {
+
+    if (this.state !== "wall") {
+      return false;
+    }
+
+    this.state = "held";
+
+    this.touchX = x;
+    this.touchY = y;
+
+    this.heldFrames = 0;
+    this.heldMoved = 0;
+    this.shake = 0;
+    this.lastDX = 0;
+    this.lastDY = 0;
+
+    return true;
+  }
+
+
+  // 손가락이 움직일 때: 방향이 반대로 바뀔 때마다 흔든 횟수가 쌓인다
+  setHeldTarget(x, y) {
+
+    if (this.state !== "held") {
+      return;
+    }
+
+    const dx = x - this.touchX;
+    const dy = y - this.touchY;
+
+    const d = sqrt(dx * dx + dy * dy);
+
+    this.touchX = x;
+    this.touchY = y;
+
+    this.heldMoved += d;
+
+    if (d > SHAKE_MIN_STEP) {
+
+      if (this.lastDX * dx + this.lastDY * dy < 0) {
+        this.shake++;
+      }
+
+      this.lastDX = dx;
+      this.lastDY = dy;
+    }
+  }
+
+
+  updateHeld() {
+
+    this.heldFrames++;
+
+    // 손가락을 따라다닌다
+    this.x = lerp(this.x, this.touchX, 0.35);
+    this.y = lerp(this.y, this.touchY, 0.35);
+
+    // 흔든 횟수는 시간이 지나면 줄어든다
+    this.shake = max(0, this.shake - SHAKE_DECAY);
+
+    // 많이 흔들수록 몸이 더 떨린다
+    this.wobble =
+      sin(this.heldFrames * 0.9) *
+      min(this.shake / SHAKE_LIMIT, 1) *
+      0.5;
+
+    if (this.shake >= SHAKE_LIMIT) {
+      this.makeDizzy();
+    }
+  }
+
+
+  // 손가락을 뗄 때: 짧게 톡 눌렀으면 잡힘, 아니면 제자리로
+  release() {
+
+    if (this.state !== "held") {
+      return;
+    }
+
+    this.state = "wall";
+
+    if (
+      this.heldFrames < TAP_FRAMES &&
+      this.heldMoved < TAP_MOVE
+    ) {
+      this.kill();
+    }
+  }
+
+
+  makeDizzy() {
+
+    this.state = "dizzy";
+
+    this.dizzyTimer = 0;
+    this.spin = 0;
+  }
+
+
+  // 어지러워서 빙글빙글
+  updateDizzy() {
+
+    this.dizzyTimer++;
+
+    this.spin += 0.3;
+
+    if (this.dizzyTimer > DIZZY_FRAMES) {
+
+      this.state = "fall";
+
+      this.fallVX = random(-1.2, 1.2);
+      this.fallVY = 0;
+    }
+  }
+
+
+  // 툭 떨어져서 화면 아래로 사라진다
+  updateFall() {
+
+    this.fallVY += 0.7;
+
+    this.x += this.fallVX;
+    this.y += this.fallVY;
+
+    this.spin += 0.2;
+
+    if (this.y > height + 80) {
+      this.death = true;
+    }
+  }
+
+
+  // =================================================
   // DISPLAY
   // =================================================
 
   display() {
 
     if (
-      this.state === "wall"
+      this.state === "wall" ||
+      this.state === "held" ||
+      this.state === "dizzy" ||
+      this.state === "fall"
     ) {
 
       this.displayTop();
+
+      if (this.state === "dizzy") {
+        this.displayStars();
+      }
     }
 
     else if (
@@ -1114,6 +1307,17 @@ class Mosquito {
       this.y
     );
 
+    if (this.state === "held") {
+      rotate(this.wobble);
+    }
+
+    else if (
+      this.state === "dizzy" ||
+      this.state === "fall"
+    ) {
+      rotate(this.spin);
+    }
+
     noStroke();
 
     const s =
@@ -1170,6 +1374,36 @@ class Mosquito {
       0,
       -s * 0.75
     );
+
+    pop();
+  }
+
+
+  // =================================================
+  // 어지러운 별
+  // =================================================
+
+  displayStars() {
+
+    push();
+
+    noStroke();
+
+    fill(this.baseColor);
+
+    for (let i = 0; i < 3; i++) {
+
+      const a =
+        this.spin * 1.5 +
+        i * TWO_PI / 3;
+
+      circle(
+        this.x + cos(a) * this.size * 0.9,
+        this.y - this.size * 0.6 +
+        sin(a) * this.size * 0.3,
+        this.size * 0.22
+      );
+    }
 
     pop();
   }

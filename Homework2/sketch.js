@@ -16,6 +16,8 @@ let mosquitoColors = [
 let mosquitoes = [];
 let dots = [];
 
+let heldMosquito = null;
+
 let isTouching = false;
 let lastTouchTime = 0;
 
@@ -79,6 +81,8 @@ function draw() {
 
   background("#111111");
 
+  drawHelp();
+
   for (
     let i = mosquitoes.length - 1;
     i >= 0;
@@ -104,6 +108,46 @@ function draw() {
   for (let i = 0; i < dots.length; i++) {
     dots[i].display();
   }
+}
+
+
+// =================================================
+// 설명 (왼쪽 아래 구석)
+// =================================================
+
+function drawHelp() {
+
+  const lines = [
+    "멈춰있는 모기 터치",
+    "멈춰있는 모기 꾹 잡고 흔들기",
+    "빈 화면 꾹 누르기"
+  ];
+
+  const margin = 20;
+  const lineHeight = 24;
+
+  push();
+
+  noStroke();
+  textAlign(LEFT, BOTTOM);
+  textSize(16);
+
+  let y = height - margin;
+
+  fill(255, 255, 255, 170);
+  textStyle(NORMAL);
+
+  for (let i = lines.length - 1; i >= 0; i--) {
+    text(lines[i], margin, y);
+    y -= lineHeight;
+  }
+
+  textSize(18);
+  fill(255, 255, 255, 230);
+  textStyle(BOLD);
+  text("how to kill mosquitos", margin, y - 4);
+
+  pop();
 }
 
 
@@ -173,7 +217,7 @@ function handleMousePress(x, y) {
     findWallMosquito(x, y);
 
   if (wallMosquito) {
-    wallMosquito.kill();
+    startHold(wallMosquito, x, y);
     return;
   }
 
@@ -211,6 +255,8 @@ function updateMouseAttractTarget(
   y
 ) {
 
+  moveHold(x, y);
+
   for (
     let i = 0;
     i < mosquitoes.length;
@@ -238,6 +284,8 @@ function mouseReleased() {
   if (isTouching) {
     return false;
   }
+
+  endHold();
 
   stopAllAttracting();
 
@@ -307,7 +355,7 @@ function handleTouchPress(x, y) {
     findWallMosquito(x, y);
 
   if (wallMosquito) {
-    wallMosquito.kill();
+    startHold(wallMosquito, x, y);
     return;
   }
 
@@ -362,6 +410,8 @@ function updateTouchAttractTarget(
   y
 ) {
 
+  moveHold(x, y);
+
   for (
     let i = 0;
     i < mosquitoes.length;
@@ -393,12 +443,43 @@ function nativeTouchEnd(event) {
 
   event.preventDefault();
 
+  endHold();
+
   stopAllAttracting();
 
   isTouching = false;
 
   lastTouchTime =
     millis();
+}
+
+
+// =================================================
+// 멈춰있는 모기 잡기 / 흔들기
+// =================================================
+
+function startHold(mosquito, x, y) {
+
+  if (mosquito.grab(x, y)) {
+    heldMosquito = mosquito;
+  }
+}
+
+
+function moveHold(x, y) {
+
+  if (heldMosquito) {
+    heldMosquito.setHeldTarget(x, y);
+  }
+}
+
+
+function endHold() {
+
+  if (heldMosquito) {
+    heldMosquito.release();
+    heldMosquito = null;
+  }
 }
 
 
